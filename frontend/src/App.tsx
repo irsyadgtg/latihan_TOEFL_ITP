@@ -1,12 +1,8 @@
-// Di dalam file src/App.tsx
+// src/App.tsx
+import AppRouter from "./routes/AppRouter";
+
 function App() {
-  return (
-    // ... kode lainnya
-    <h1 className="text-3xl font-bold underline text-sky-500 p-4">
-      Hello Vite + React + Tailwind!
-    </h1>
-    // ... kode lainnya
-  )
+  return <AppRouter />;
 }
 
-export default App
+export default App;
