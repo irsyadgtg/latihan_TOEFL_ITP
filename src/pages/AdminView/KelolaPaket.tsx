@@ -99,7 +99,7 @@ export default function Dashboard() {
       <div>
         {/* button tambah paket */}
         <div className="flex justify-end items-center mb-4">
-          <button onClick={() => navigate("/tambahPaket")} className="border border-blue-500 text-blue-500 px-4 py-2 rounded-lg text-[18px] hover:bg-blue-50 transition-all">
+          <button onClick={() => navigate("/admin/kelola-paket/tambah")} className="border border-blue-500 text-blue-500 px-4 py-2 rounded-lg text-[18px] hover:bg-blue-50 transition-all">
             + Tambah Paket Kursus
           </button>
         </div>
