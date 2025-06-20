@@ -10,6 +10,8 @@ use App\Http\Controllers\PengajuanSkorAWalController;
 use App\Http\Controllers\KelolaPaketKursusController;
 use App\Http\Controllers\RencanaBelajarController;
 use App\Http\Controllers\TinjauRencanaBelajarController;
+use App\Http\Controllers\PantauPesertaController;
+use App\Http\Controllers\DashboardAdminController;
 
 /*
 |--------------------------------------------------------------------------
@@ -58,6 +60,7 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::middleware(['auth:sanctum'])->group(function () {
     //Kelola Instruktur
     Route::middleware('role:admin')->group(function () {
+        Route::get('/admin/dashboard-admin', [DashboardAdminController::class, 'getDashboardData']); //Dashboard admin
         Route::get('/profil/admin', [KelolaProfilPegawaiController::class, 'getProfilAdmin']); // Detail Profil admin
         Route::post('/profil/admin', [KelolaProfilPegawaiController::class, 'updateProfilAdmin']); //Update profil
         Route::get('/admin/instruktur', [InstrukturController::class, 'daftarInstrukturAdmin']); // Daftar instruktur
@@ -74,6 +77,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::patch('/paket-kursus/{id}/ubah-detail', [KelolaPaketKursusController::class, 'updateDetailPaket']); //Update detail
         Route::get('/paket-kursus/{id}/aktivasi', [KelolaPaketKursusController::class, 'getDetailAktivasi']); //Detail buat atur aktivasi
         Route::patch('/paket-kursus/{id}/aktivasi', [KelolaPaketKursusController::class, 'toggleAktif']); //Atur aktivasi
+        Route::get('/admin/pantau-peserta', [PantauPesertaController::class, 'index']); //Pantau peserta kursus
     });
 
     //Daftar Instruktur
@@ -82,6 +86,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::middleware('role:instruktur')->group(function () {
         Route::get('/profil/instruktur', [KelolaProfilPegawaiController::class, 'getProfilInstruktur']); //Detail profil instruktur
         Route::post('/profil/instruktur', [KelolaProfilPegawaiController::class, 'updateProfilInstruktur']); //Update profil
+        Route::get('/instruktur/daftar-instruktur', [InstrukturController::class, 'daftarInstrukturAdmin']); //Daftar instruktur
         Route::get('/pengajuan-rencana-belajar', [TinjauRencanaBelajarController::class, 'index']); //Daftar pengajuan rencana belajar untuk ditinjau
         Route::get('/pengajuan-rencana-belajar/{id}', [TinjauRencanaBelajarController::class, 'show']); //Detail pengajuan rencana belajar yg ditinjau
         Route::post('/pengajuan-rencana-belajar/{id}/feedback', [TinjauRencanaBelajarController::class, 'beriFeedback']); //Beri feedback
@@ -90,6 +95,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::middleware('role:peserta')->group(function () {
         Route::get('/profil/peserta', [KelolaProfilPesertaController::class, 'getProfilPeserta']); //Detail profil peserta
         Route::post('/profil/peserta', [KelolaProfilPesertaController::class, 'updateProfilPeserta']); //Update profil
+        Route::get('/peserta/daftar-instruktur', [InstrukturController::class, 'daftarInstrukturAdmin']); //Daftar instruktur
         Route::post('/pengajuan-skor-awal', [PengajuanSkorAwalController::class, 'store']); // Peserta mengajukan skor awal
         Route::get('/pengajuan-skor-awal', [PengajuanSkorAwalController::class, 'index']);  // Peserta melihat daftar riwayat pengajuan
         Route::get('/peserta/rencana-belajar', [RencanaBelajarController::class, 'index']);
