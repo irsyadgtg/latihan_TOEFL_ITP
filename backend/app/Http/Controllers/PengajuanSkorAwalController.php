@@ -134,7 +134,7 @@ class PengajuanSkorAwalController extends Controller
 
         $pengajuan->status = $request->status;
         $pengajuan->tglSeleksi = now();
-        $pengajuan->idPegawai = Auth::user()->id; // diasumsikan admin login sebagai pegawai
+        $pengajuan->idPegawai = Auth::user()->idPegawai; // diasumsikan admin login sebagai pegawai
         if ($request->status === 'Disetujui') {
             $pengajuan->masaBerlakuDokumen = $request->masaBerlakuDokumen;
             $pengajuan->keterangan = null; // bersihkan jika ada sisa sebelumnya

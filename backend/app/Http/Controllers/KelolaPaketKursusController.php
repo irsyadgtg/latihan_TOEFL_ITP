@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PaketKursus;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;;
 use Illuminate\Support\Facades\Validator;
 
 class KelolaPaketKursusController extends Controller
@@ -24,9 +25,8 @@ class KelolaPaketKursusController extends Controller
         $validator = Validator::make($request->all(), [
             'namaPaket' => 'required|string|max:255',
             'harga' => 'required|numeric|min:0',
-            'masaBerlaku' => 'required|integer|min:1',
+            'masaBerlaku' => 'required|integer|min:0',
             'fasilitas' => 'required|string',
-            'idPegawai' => 'nullable|exists:pegawai,idPegawai'
         ]);
 
         if ($validator->fails()) {
@@ -36,13 +36,18 @@ class KelolaPaketKursusController extends Controller
             ], 422);
         }
 
+        $user = Auth::user(); // ambil user login
+
+        // Ambil id pegawai dari user login
+        $idPegawai = $user->idPegawai; 
+
         $paket = PaketKursus::create([
             'namaPaket' => $request->namaPaket,
             'harga' => $request->harga,
             'masaBerlaku' => $request->masaBerlaku,
             'fasilitas' => $request->fasilitas,
             'aktif' => true,
-            'idPegawai' => $request->idPegawai,
+            'idPegawai' => $idPegawai,
         ]);
 
         return response()->json([
@@ -51,10 +56,12 @@ class KelolaPaketKursusController extends Controller
         ], 201);
     }
 
+
     //Detail paket untuk diubah
     public function show($id)
     {
-        $paket = PaketKursus::withCount('pesertaPaket')->find($id);
+        // $paket = PaketKursus::withCount('pesertaPaket')->find($id);
+        $paket = PaketKursus::find($id);
 
         if (!$paket) {
             return response()->json(['message' => 'Paket kursus tidak ditemukan.'], 404);
@@ -100,8 +107,9 @@ class KelolaPaketKursusController extends Controller
     //Detail untuk aktivasi paket
     public function getDetailAktivasi($id)
     {
-        $paket = PaketKursus::withCount('pesertaPaket') // ambil total pengguna paket
-            ->find($id);
+        // $paket = PaketKursus::withCount('pesertaPaket') // ambil total pengguna paket
+        //     ->find($id);
+        $paket = PaketKursus::find($id);
 
         if (!$paket) {
             return response()->json(['message' => 'Paket kursus tidak ditemukan.'], 404);
@@ -115,7 +123,6 @@ class KelolaPaketKursusController extends Controller
                 'fasilitas' => $paket->fasilitas,
                 'masaBerlaku' => $paket->masaBerlaku,
                 'aktif' => $paket->aktif,
-                'totalPengguna' => $paket->peserta_paket_count
             ]
         ], 200);
     }

@@ -25,7 +25,7 @@ class Instruktur extends Model
         return $this->belongsTo(Pegawai::class, 'idPegawai');
     }
 
-    public function feedback()
+    public function feedbackRencanaBelajar()
     {
         return $this->hasMany(FeedbackRencanaBelajar::class, 'idInstruktur');
     }
