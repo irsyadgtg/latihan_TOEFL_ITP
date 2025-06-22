@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AuthLayout from "../../layouts/AuthLayout";
 import { Eye, EyeOff } from "lucide-react";
-import axiosInstance from "../../axios";
+import axiosInstance from "../../services/axios";
 // 'isAxiosError' dan 'ValidationErrors' bisa dihapus jika tidak dipakai
 // import { isAxiosError } from "axios";
 

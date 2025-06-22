@@ -51,10 +51,9 @@ export default function Dashboard() {
           {/* Ketentuan Paket Kursus (Masa Berlaku Paket Kursus) */}
           <div>
             <label className="block text-[22px] font-semibold mb-1">
-              Ketentuan Paket Kursus (Masa Berlaku Paket Kursus
+              Ketentuan Paket Kursus (Masa Berlaku Paket Kursus)
             </label>
             <input
-              type="date"
               className="w-full h-16 border rounded-xl px-4 py-2 border-borderColor focus:outline-none"
               defaultValue="2025-04-18"
             />

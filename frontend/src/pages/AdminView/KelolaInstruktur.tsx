@@ -69,7 +69,7 @@ export default function KelolaInstruktur() {
     >
       <div>
         <div className="flex justify-end">
-          <button onClick={() => navigate("/tambahInstruktur")} className="flex p-2 items-center text-[18px] border border-blue-500 rounded-[10px] text-blue-500 hover:bg-blue-50">
+          <button onClick={() => navigate("/admin/kelola-instruktur/tambah")} className="flex p-2 items-center text-[18px] border border-blue-500 rounded-[10px] text-blue-500 hover:bg-blue-50">
             <Plus />
             <span>Tambah Instruktur</span>
           </button>

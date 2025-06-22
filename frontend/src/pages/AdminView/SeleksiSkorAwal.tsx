@@ -1,11 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import Layout from "../../layouts/AdminView";
+import AdminView from "../../layouts/AdminView";
 import { skor } from "../../assets/data/seleksiSkorAwal"; //data dummy
-
-// fungsi format rupiah
-function formatRupiah(amount: number): string {
-  return "Rp" + amount.toLocaleString("id-ID");
-}
 
 // fungsi format tanggal
 function formatTimestamp(dateStr: string): string {
@@ -18,11 +13,11 @@ function formatTimestamp(dateStr: string): string {
   return `08:00 – ${formattedDate}`;
 }
 
-export default function Dashboard() {
+export default function SeleksiSkorAwal() {
   const navigate = useNavigate();
 
   return (
-    <Layout
+    <AdminView
       title="Daftar Pengajuan Skor Awal"
       note={""}
     >
@@ -77,12 +72,12 @@ export default function Dashboard() {
                 <p className="font-semibold text-[16px]">{trx.keterangan}</p>
               </div>
               <div>
-                <button  onClick={() => navigate("/detailPengajuan")} className="px-5 py-2 border border-blue-500 rounded-md font-semibold text-blue-500 bg-white hover:bg-blue-50">Seleksi</button>
+                <button  onClick={() => navigate("/admin/seleksi-skor/detail-pengajuan")} className="px-5 py-2 border border-blue-500 rounded-md font-semibold text-blue-500 bg-white hover:bg-blue-50">Seleksi</button>
               </div>
             </div>
           </div>
         ))}
       </div>
-    </Layout>
+    </AdminView>
   );
 }

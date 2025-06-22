@@ -43,6 +43,10 @@ const VerificationLinkPage: React.FC = () => {
             className="flex w-full justify-center rounded-md border border-transparent bg-[#E5A923] py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2">
           {isLoading ? "Mengirim..." : "Kirim Link Verifikasi"}
         </button>
+
+        {message && (
+          <p className="mt-4 text-sm text-center text-gray-600">{message}</p>
+        )}
       </div>
 
     </AuthLayout>

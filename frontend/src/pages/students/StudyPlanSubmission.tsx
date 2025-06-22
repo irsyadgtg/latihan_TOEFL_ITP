@@ -1,6 +1,5 @@
 import React, { useEffect } from "react";
 import { useStudentLayoutContext } from "../../layouts/StudentLayout";
-import Score from "../../components/Score";
 import { useNavigate } from "react-router-dom";
 import StudyPlan from "../../components/StudyPlan";
 
