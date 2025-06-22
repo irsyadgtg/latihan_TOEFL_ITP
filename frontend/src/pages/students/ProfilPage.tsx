@@ -89,7 +89,7 @@ const ProfilePage: React.FC = () => {
           <label className="block font-semibold mb-1">Alamat Lengkap</label>
           <input
             name="address"
-            placeholder="Masukkan Alamat lengkap (nama jalan, kota, provinsi, kode pos)"
+            placeholder="Masukkan Alamat lengkap"
             value={form.address}
             onChange={handleChange}
             disabled={!isEditing}

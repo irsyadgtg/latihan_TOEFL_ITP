@@ -4,7 +4,7 @@ import EditIcon from "../../../assets/icons/edit.svg";
 export default function UbahDetail() {
   return (
     <Layout
-      title="Ubah Daetail Paket Kursus"
+      title="Ubah Detail Paket Kursus"
       note={"Mengubah detail paket kursus untuk diperbaharui"}
     >
       <div className="w-full py-2 ">
@@ -70,38 +70,16 @@ export default function UbahDetail() {
           {/* Ketentuan Paket Kursus (Masa Berlaku Paket Kursus) */}
           <div>
             <label className="block text-[22px] font-semibold mb-1">
-              Ketentuan Paket Kursus (Masa Berlaku Paket Kursus)
+              Ketentuan Paket Kursus (Masa Berlaku Paket Kursus dalam Bulan)
             </label>
 
             <div className="flex items-center border border-borderColor rounded-xl px-4 h-16">
               <input
                 type="text"
-                placeholder="20-09-2025"
+                placeholder="12"
                 className="flex-grow focus:outline-none"
               />
-              <button className="ml-4 font-semibold flex items-center gap-4 bg-blue-500 text-white px-8 py-2 rounded-full hover:bg-blue-500/80 duration-200">
-                <img className="w-[18px]" src={EditIcon} alt="" />
-                Edit
-              </button>
-            </div>
-          </div>
 
-          {/* Total Pengguna Paket Kursus */}
-          <div>
-            <label className="block text-[22px] font-semibold mb-1">
-              Total Pengguna Paket Kursus
-            </label>
-
-            <div className="flex items-center border border-borderColor rounded-xl px-4 h-16">
-              <input
-                type="text"
-                placeholder="40"
-                className="flex-grow focus:outline-none"
-              />
-              <button className="ml-4 font-semibold flex items-center gap-4 bg-blue-500 text-white px-8 py-2 rounded-full hover:bg-blue-500/80 duration-200">
-                <img className="w-[18px]" src={EditIcon} alt="" />
-                Edit
-              </button>
             </div>
           </div>
 

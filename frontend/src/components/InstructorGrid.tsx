@@ -8,7 +8,7 @@ type Instructor = {
   availability: string;
 };
 
-const dummyInstructors: Instructor[] = new Array(8).fill(null).map((_, i) => ({
+const dummyInstructors: Instructor[] = new Array(8).fill(null).map(() => ({
   image: "/dumy.jpg",
   name: "Nama Instruktur",
   skills: "Keahlian",

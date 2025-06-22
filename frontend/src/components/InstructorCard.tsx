@@ -1,40 +1,47 @@
 import React from "react";
 
-type InstructorCardProps = {
+interface InstructorCardProps {
   image: string;
   name: string;
   skills: string;
   availability: string;
-  selected?: boolean;
-  onClick?: () => void;
-};
+  selected: boolean;
+  onClick: () => void;
+}
 
 const InstructorCard: React.FC<InstructorCardProps> = ({
   image,
   name,
   skills,
   availability,
-  selected = false,
+  selected,
   onClick,
 }) => {
   return (
     <div
-      className={`rounded-lg border p-4 text-start shadow-sm transition duration-200 cursor-pointer ${
-        selected ? "border-blue-500" : "border-gray-300 hover:border-blue-400"
+      className={`box-border w-[231px] rounded-[10px] cursor-pointer transition-all duration-300 border p-3 ${
+        selected
+          ? "border-[#A80532] shadow-lg"
+          : "border-black hover:shadow-md"
       }`}
       onClick={onClick}
     >
-      <div className="w-full h-auto mb-4">
-        <img
-          src={image}
-          alt={name}
-          className="w-full h-full rounded-lg object-cover"
-        />
+      <img
+        src={image}
+        alt={name}
+        className="w-full h-auto rounded-md object-cover"
+      />
+      <div className="pt-4">
+        <h3
+          className={`font-semibold text-xl ${
+            selected ? "text-[#A80532]" : "text-gray-900"
+          }`}
+        >
+          {name}
+        </h3>
+        <p className="text-base text-gray-500 mt-2">{skills}</p>
+        <p className="text-base text-gray-500 mt-1">{availability}</p>
       </div>
-
-      <h3 className="font-semibold text-lg">{name}</h3>
-      <p className="text-sm text-gray-500">{skills}</p>
-      <p className="text-sm text-gray-500">{availability}</p>
     </div>
   );
 };

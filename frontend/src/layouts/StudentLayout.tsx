@@ -5,14 +5,9 @@ import { IoIosArrowDown } from "react-icons/io";
 
 import {
   User,
-  FileText,
-  BarChart3,
-  BookOpen,
-  ClipboardCheck,
   Menu,
   X,
   Bell,
-  ArrowDown,
 } from "lucide-react";
 
 export type StudentLayoutContextType = {

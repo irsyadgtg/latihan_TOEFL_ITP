@@ -1,7 +1,7 @@
 import React from "react";
 
 // Ganti dengan path logo Telkom University Anda di folder public
-const logoUrl = "Logo.png";
+const logoUrl = "/Logo.png";
 
 type AuthLayoutProps = {
   children: React.ReactNode;
