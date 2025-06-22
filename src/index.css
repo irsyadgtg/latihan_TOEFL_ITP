@@ -1,0 +1,112 @@
+/* Font Poppins */
+@import url("https://fonts.googleapis.com/css2?family=Candal&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    background-color: white;
+    min-height: 100vh;
+    font-family: "Poppins", sans-serif;
+    font-style: normal;
+  }
+}
+
+
+/* PopUp Tanggal ============================================================================================================= */
+/* =========================================================================================================================== */
+
+/* Main input field (already styled in JSX, but here for completeness) */
+.react-datepicker__input-container input {
+  /* Ensure these match your JSX class styles if they are not overriding */
+  /* For example, if you want to explicitly set border-color: */
+  border-color: #e2e8f0; /* Example border color */
+}
+
+/* Calendar container */
+.custom-datepicker-calendar {
+  border-radius: 12px; /* Rounded corners for the calendar pop-up */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+  border: none; /* Remove default border if you want shadow to define boundary */
+}
+
+/* Header (Month and Year) */
+.react-datepicker__header {
+  background-color: white; /* Match the white background */
+  border-bottom: none; /* Remove default border */
+  padding-top: 16px;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+.react-datepicker__current-month {
+  font-size: 1.25rem; /* Larger font for month/year */
+  font-weight: 600; /* Bolder */
+  color: #333; /* Darker text */
+}
+
+/* Navigation arrows */
+.react-datepicker__navigation {
+  top: 20px; /* Adjust vertical position */
+}
+
+.react-datepicker__navigation--previous {
+  left: 20px;
+  border-right-color: #999; /* Example arrow color */
+}
+
+.react-datepicker__navigation--next {
+  right: 20px;
+  border-left-color: #999; /* Example arrow color */
+}
+
+/* Weekday names (Mo, Tu, We...) */
+.react-datepicker__day-name {
+  color: #777; /* Lighter color for day names */
+  font-weight: 500;
+  margin: 0 4px; /* Adjust spacing */
+}
+
+/* Days in the calendar */
+.react-datepicker__day {
+  width: 36px;
+  height: 36px;
+  line-height: 36px;
+  margin: 4px; /* Spacing between days */
+  border-radius: 8px; /* Slightly rounded for individual days */
+}
+
+/* Hover state for days */
+.react-datepicker__day:hover {
+  background-color: #f0f0f0; /* Light background on hover */
+  border-radius: 8px;
+}
+
+/* Selected day */
+.react-datepicker__day--selected {
+  background-color: #1a73e8 !important; /* Your green color from the image, adjust as needed */
+  color: white !important;
+  font-weight: bold;
+  border-radius: 8px; /* Keep rounded corners */
+}
+
+/* Highlighted (today) day - if different from selected */
+.react-datepicker__day--today {
+  font-weight: bold;
+  /* Add specific style for today if it's not selected and you want it highlighted */
+}
+
+/* Days from other months (greyed out) */
+.react-datepicker__day--outside-month {
+  color: #ccc;
+}
+
+/* The 'Selesai' (Done) button is not part of react-datepicker by default.
+   You would typically close the calendar on selection or implement a custom footer.
+   For a similar effect, you might need to render a custom footer using `renderCustomHeader`
+   or wrap the DatePicker in a custom modal.
+*/

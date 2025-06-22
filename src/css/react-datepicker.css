@@ -1,0 +1,9 @@
+.react-datepicker {
+  border: none;
+  font-family: inherit;
+  font-size: 16px;
+}
+.react-datepicker__day--selected {
+  background-color: #15803d !important;
+  color: white;
+}
