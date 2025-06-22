@@ -48,4 +48,16 @@ class Pengguna extends Authenticatable
         return $this->belongsTo(Pegawai::class, 'idPegawai');
     }
 
+        //  Relasi UserProgress
+    public function userProgress()
+    {
+        return $this->hasMany(UserProgress::class, 'idPengguna');
+    }
+
+    //  Relasi UserAnswer
+    public function userAnswer()
+    {
+        return $this->hasMany(UserAnswer::class, 'idPengguna');
+    }
+
 }

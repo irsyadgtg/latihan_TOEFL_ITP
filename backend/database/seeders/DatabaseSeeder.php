@@ -20,6 +20,11 @@ class DatabaseSeeder extends Seeder
         // ]);
         $this->call([
             AdminSeeder::class,
+            SkillSeeder::class,
+            SimulationSetSeeder::class,
+            TestDataSeeder::class,
+            QuestionSeeder::class,
+            PageSeeder::class,
         ]);
     }
 }
