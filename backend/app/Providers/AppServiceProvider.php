@@ -26,5 +26,6 @@ class AppServiceProvider extends ServiceProvider
     {
         PengajuanSkorAwal::observe(PengajuanSkorAwalObserver::class);
         Transaksi::observe(TransaksiObserver::class);
+
     }
 }
