@@ -1,10 +1,10 @@
 import React, { useEffect } from "react";
-import { useStudentLayoutContext } from "../../layouts/StudentLayout";
+import { useDashboardLayoutContext } from "../../layouts/DashboardLayout";
 import { useNavigate } from "react-router-dom";
 import StudyPlan from "../../components/StudyPlan";
 
 const StudyPlanSubmission: React.FC = () => {
-  const { setTitle, setSubtitle } = useStudentLayoutContext();
+  const { setTitle, setSubtitle } = useDashboardLayoutContext();
 
   const navigate = useNavigate();
 

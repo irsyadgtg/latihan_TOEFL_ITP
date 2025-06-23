@@ -1,9 +1,9 @@
 import React, { useEffect } from "react";
-import { useStudentLayoutContext } from "../../layouts/StudentLayout";
+import { useDashboardLayoutContext } from "../../layouts/DashboardLayout";
 import InstructorGrid from "../../components/InstructorGrid";
 
 const InstructurPage: React.FC = () => {
-  const { setTitle, setSubtitle } = useStudentLayoutContext();
+  const { setTitle, setSubtitle } = useDashboardLayoutContext();
 
   useEffect(() => {
     setTitle("Daftar instruktur");

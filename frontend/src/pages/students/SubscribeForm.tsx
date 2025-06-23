@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { useStudentLayoutContext } from "../../layouts/StudentLayout";
+import { useDashboardLayoutContext } from "../../layouts/DashboardLayout";
 import { IoArrowBackCircleOutline } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
-import PaymentMethodModal from "../../components/PaymentMethodModal";
+import ConfirmationPaymentModal from "../../components/ConfirmPaymentModal"; 
 
 const SubscribeForm: React.FC = () => {
-  const { setTitle, setSubtitle } = useStudentLayoutContext();
+  const { setTitle, setSubtitle } = useDashboardLayoutContext();
   const navigate = useNavigate();
 
   const [approvalStatus, setApprovalStatus] = useState<
@@ -13,12 +13,19 @@ const SubscribeForm: React.FC = () => {
   >("approved");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
+  // --- Anda bisa menambahkan state untuk paket yang dipilih di sini jika dinamis ---
+  // const [selectedPackage, setSelectedPackage] = useState({
+  //   name: "TOEFL ITP Preparation",
+  //   price: 250000,
+  //   // ... data lain yang relevan untuk konfirmasi pembayaran
+  // });
+
   useEffect(() => {
     setTitle("");
     setSubtitle("");
     // Simulasi ambil status dari API
     setApprovalStatus("approved");
-  }, []);
+  }, [setTitle, setSubtitle]); // Tambahkan setTitle, setSubtitle ke dependency array
 
   const isDisabled = approvalStatus !== "approved";
 
@@ -45,7 +52,7 @@ const SubscribeForm: React.FC = () => {
           <label className="block font-semibold mb-1">Nama Paket</label>
           <input
             type="text"
-            value="TOEFL ITP Preparation"
+            value="TOEFL ITP Preparation" 
             readOnly
             className="w-full border border-gray-400 rounded-md px-3 py-2 text-sm bg-transparent"
           />
@@ -55,7 +62,7 @@ const SubscribeForm: React.FC = () => {
           <label className="block font-semibold mb-1">Harga</label>
           <input
             type="text"
-            value="Rp250.000"
+            value="Rp250.000" 
             readOnly
             className="w-full border border-gray-400 rounded-md px-3 py-2 text-sm bg-transparent"
           />
@@ -77,7 +84,7 @@ const SubscribeForm: React.FC = () => {
           </label>
           <input
             type="text"
-            value="20-09-2025"
+            value="20-09-2025" 
             readOnly
             className="w-full border border-gray-400 rounded-md px-3 py-2 text-sm bg-transparent"
           />
@@ -91,9 +98,9 @@ const SubscribeForm: React.FC = () => {
             className={`px-6 py-2 rounded-md font-semibold transition ${
               isDisabled
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "bg-yellow-400 hover:bg-yellow-500 text-white"
+                : "bg-yellow-400 hover:bg-yellow-500 text-white" // Warna tombol beli
             }`}
-        >
+          >
             Beli
           </button>
           {isDisabled && (
@@ -106,13 +113,16 @@ const SubscribeForm: React.FC = () => {
 
       {/* Modal */}
       {showPaymentModal && (
-        <PaymentMethodModal
+        <ConfirmationPaymentModal
           onClose={() => setShowPaymentModal(false)}
-          onSelect={(method) => {
-            setShowPaymentModal(false);
-            alert(`Metode dipilih: ${method}`);
-            // lanjutkan ke proses transaksi atau redirect
-          }}
+          // --- Hapus prop 'onSelect' karena tidak digunakan oleh ConfirmationPaymentModal ---
+          // --- Anda bisa meneruskan data paket ke modal di sini jika perlu ---
+          // Misalnya:
+          // packageName={selectedPackage.name}
+          // amount={selectedPackage.price}
+          // bankName="..."
+          // accountNumber="..."
+          // accountHolder="..."
         />
       )}
     </div>

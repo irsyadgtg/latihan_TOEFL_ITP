@@ -1,12 +1,7 @@
-import Layout from "../../../layouts/AdminView";
 import StatusToggle from "../../../components/utils/StatusToggle";
 
 export default function Aktivasi() {
   return (
-    <Layout
-      title="Atur Aktivasi Paket Kursus"
-      note={"Mengubah status aktivasi paket kursus"}
-    >
       <div className="w-full py-2 ">
         <StatusToggle />
         {/* Form */}
@@ -82,6 +77,5 @@ export default function Aktivasi() {
           </div>
         </form>
       </div>
-    </Layout>
   );
 }

@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useStudentLayoutContext } from "../../layouts/StudentLayout";
+import { useDashboardLayoutContext } from "../../layouts/DashboardLayout";
 import { IoArrowBackCircleOutline } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
 import SkillListView from "../../components/SkillListView";
 
 const StudyPlanSubmissionCreate: React.FC = () => {
-  const { setTitle, setSubtitle } = useStudentLayoutContext();
+  const { setTitle, setSubtitle } = useDashboardLayoutContext();
   const navigate = useNavigate();
   const [step, setStep] = useState<"structure" | "listening" | "reading">(
     "structure"

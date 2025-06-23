@@ -1,11 +1,6 @@
-import Layout from "../../../layouts/AdminView";
-
 export default function Dashboard() {
   return (
-    <Layout
-      title="Tambah Paket Kursus"
-      note={"Menambahkan paket kursus untuk disediakan kepada peserta"}
-    >
+    
       <div className="w-full py-2 ">
         {/* Form */}
         <form className="space-y-6">
@@ -67,6 +62,5 @@ export default function Dashboard() {
           </div>
         </form>
       </div>
-    </Layout>
   );
 }

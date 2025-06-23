@@ -1,11 +1,11 @@
 // src/pages/student/StudyPlanSubmissionDetail.tsx
 import React, { useEffect } from "react";
-import { useStudentLayoutContext } from "../../layouts/StudentLayout";
+import { useDashboardLayoutContext } from "../../layouts/DashboardLayout";
 import { IoArrowBackCircleOutline } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
 
 const StudyPlanSubmissionDetail: React.FC = () => {
-  const { setTitle, setSubtitle } = useStudentLayoutContext();
+  const { setTitle, setSubtitle } = useDashboardLayoutContext();
 
   const navigate = useNavigate();
 

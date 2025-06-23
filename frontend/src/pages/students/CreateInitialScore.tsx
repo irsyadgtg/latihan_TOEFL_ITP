@@ -1,10 +1,10 @@
 import React, { useEffect, useRef } from "react";
-import { useStudentLayoutContext } from "../../layouts/StudentLayout";
+import { useDashboardLayoutContext } from "../../layouts/DashboardLayout";
 import { IoArrowBackCircleOutline, IoDocumentOutline } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
 
 const CreateInitialScore: React.FC = () => {
-  const { setTitle, setSubtitle } = useStudentLayoutContext();
+  const { setTitle, setSubtitle } = useDashboardLayoutContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 

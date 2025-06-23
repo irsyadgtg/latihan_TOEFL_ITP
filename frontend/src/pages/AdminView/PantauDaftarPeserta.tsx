@@ -1,32 +1,44 @@
-import Layout from "../../layouts/AdminView";
+import { useEffect } from "react"; // Import useEffect
 import { participants } from "../../assets/data/pantauDaftarPeserta"; //data dummy
+import { useDashboardLayoutContext } from '../../layouts/DashboardLayout'; // Import context DashboardLayout
 
 // icons
 import Search from "../../assets/icons/search.png";
 
 
-export default function Dashboard() {
+export default function PantauPeserta() { // Nama komponen diganti menjadi PantauPeserta
+  // Ambil setter dari context DashboardLayout
+  const { setTitle, setSubtitle } = useDashboardLayoutContext();
+
+  // Gunakan useEffect untuk mengatur judul saat komponen dimuat
+  useEffect(() => {
+    setTitle("Pantau Peserta"); // Judul untuk halaman Pantau Peserta
+    setSubtitle("Lihat status dan progres peserta kursus."); // Subjudul yang relevan
+    
+    // Opsional: Cleanup function jika Anda ingin mengatur ulang judul saat komponen unmount
+    // return () => {
+    //   setTitle(""); 
+    //   setSubtitle("");
+    // };
+  }, [setTitle, setSubtitle]); // Pastikan dependensi dimasukkan
+
   return (
-    <Layout
-      title="Pantau Daftar Peserta"
-      note={"Daftar peserta kursus yang tersedia berdasarkan pendaftaran"}
-    >
-      <div className="">
-        {/* input pencarian */}
-        <div className="relative w-1/2 mb-6">
-          <img
-            src={Search}
-            alt="Search"
-            className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 opacity-60 peer peer-focus:hidden"
-          />
-          <input
-            type="text"
-            placeholder="Pencarian"
-            className="w-full border border-borderColor rounded-lg pl-10 pr-4 py-2 focus:outline-none"
-          />
-        </div>
-        {/* tabel */}
-         <div className="space-y-4">
+    <div className="mt-4"> {/* Tambahkan mt-4 jika perlu margin atas */}
+      {/* input pencarian */}
+      <div className="relative w-1/2 mb-6">
+        <img
+          src={Search}
+          alt="Search"
+          className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 opacity-60 peer peer-focus:hidden"
+        />
+        <input
+          type="text"
+          placeholder="Pencarian"
+          className="w-full border border-borderColor rounded-lg pl-10 pr-4 py-2 focus:outline-none"
+        />
+      </div>
+      {/* tabel */}
+        <div className="space-y-4">
           {participants.map((p, i) => (
             <div
               key={i}
@@ -65,7 +77,6 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
-      </div>
-    </Layout>
+    </div>
   );
 }

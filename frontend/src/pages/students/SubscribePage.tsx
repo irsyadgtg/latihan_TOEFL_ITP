@@ -1,13 +1,13 @@
 // src/pages/student/StudentDashboard.tsx
 import React, { useEffect } from "react";
-import { useStudentLayoutContext } from "../../layouts/StudentLayout";
+import { useDashboardLayoutContext } from "../../layouts/DashboardLayout";
 
 import image from "/package.png";
 import PackageCard from "../../components/PackageCard";
 import { useNavigate } from "react-router-dom";
 
 const SubscribePage: React.FC = () => {
-  const { setTitle, setSubtitle } = useStudentLayoutContext();
+  const { setTitle, setSubtitle } = useDashboardLayoutContext();
 
   useEffect(() => {
     setTitle("Berlangganan Paket Kursus");

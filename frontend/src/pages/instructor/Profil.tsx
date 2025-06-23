@@ -3,7 +3,7 @@ import { FaEdit } from "react-icons/fa";
 import { format } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
-import Layout from "../../layouts/InstructorLayout";
+import { useDashboardLayoutContext } from '../../layouts/DashboardLayout'; // Import context DashboardLayout
 
 export default function Profil() {
   const [isEditing, setIsEditing] = useState(false);
@@ -16,7 +16,7 @@ export default function Profil() {
 
   const [form, setForm] = useState({
     fullName: "Khrsima", // Pastikan nilai ini ada saat inisialisasi
-    username: "khrsimanaam",
+    username: "khrsimamanang",
     email: "khrsimamanang@gmail.com", // Menambahkan email dan idNumber
     idNumber: "12077139102019",
     address: "",
@@ -25,12 +25,26 @@ export default function Profil() {
     keahlian: 'Structure',
   });
 
+  // Ambil setter dari context DashboardLayout
+  const { setTitle, setSubtitle } = useDashboardLayoutContext();
+
   useEffect(() => {
     // Inisialisasi photoPreview jika belum ada foto yang di-upload
     if (!photoPreview) {
       setPhotoPreview("https://ui-avatars.com/api/?name=Khrsima&background=random");
     }
-  }, [photoPreview]);
+
+    // Mengatur judul dan subjudul header global saat komponen dimuat
+    setTitle("Profil Saya");
+    setSubtitle("Isikan profil pengguna Anda");
+
+    // Opsional: Cleanup function jika Anda ingin mengatur ulang judul saat komponen unmount
+    // return () => {
+    //   setTitle(""); 
+    //   setSubtitle("");
+    // };
+
+  }, [photoPreview, setTitle, setSubtitle]); // Pastikan dependensi dimasukkan, termasuk setTitle dan setSubtitle
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -69,10 +83,7 @@ export default function Profil() {
     'w-full mt-1 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 disabled:bg-gray-100';
 
   return (
-    <Layout
-      title="Profil Saya"
-      note="Isikan profil pengguna Anda disini"
-    >
+    <>
       <div className="mx-auto p-6 rounded-lg bg-white mt-4">
         <div className="flex justify-between items-start pb-6 border-b border-gray-200">
           <div className="flex items-start gap-4">
@@ -245,6 +256,6 @@ export default function Profil() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }

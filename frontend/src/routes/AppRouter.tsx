@@ -1,8 +1,8 @@
 // src/routes/AppRouter.tsx
-import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 // Layouts
-import StudentLayout from "../layouts/StudentLayout";
+import DashboardLayout from "../layouts/DashboardLayout";
 
 // Auth Pages
 import LoginPage from "../pages/auth/LoginPage";
@@ -40,6 +40,7 @@ import TambahPaket from "../pages/AdminView/KelolaPaket/TambahPaket";
 import UbahDetail from "../pages/AdminView/KelolaPaket/UbahDetail";
 import AktivasiPaket from "../pages/AdminView/KelolaPaket/Aktivasi";
 import DetailPengajuan from "../pages/AdminView/SeleksiSkorAwal/DetailPengajuan";
+import DetailTransaksi from "../pages/AdminView/RiwayatTransaksi/DetailTransaksi";
 
 // Instructor Pages
 import InstructorLoginPage from "../pages/auth/InstructorLoginPage";
@@ -50,6 +51,7 @@ import TinjauRencanaBelajar from "../pages/instructor/TinjauRencanaBelajar";
 
 import DetailRencanaBelajar from '../pages/instructor/DetailRencanaBelajar';
 import { StudyPlanProvider } from '../contexts/StudyPlanContext';
+import { adminNavigation, instructorNavigation, studentNavigation } from "../assets/data/navigasi";
 
 const AppRouter = () => {
   return (
@@ -64,7 +66,7 @@ const AppRouter = () => {
 
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route path="/admin" element={<Outlet />}>
+        <Route path="/admin"element={<DashboardLayout menuItems={adminNavigation}/>}>
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="kelola-instruktur" element={<KelolaInstruktur />} />
           <Route path="kelola-instruktur/tambah" element={<TambahInstruktur />} />
@@ -80,6 +82,7 @@ const AppRouter = () => {
           <Route path="seleksi-skor" element={<SeleksiSkor />} />
           <Route path="seleksi-skor/detail-pengajuan" element={<DetailPengajuan />} />
           <Route path="riwayat-transaksi" element={<RiwayatTransaksi />} />
+          <Route path="riwayat-transaksi/detail-transaksi/:id" element={<DetailTransaksi />} />
           <Route path="notifikasi" element={<NotifikasiAdmin />} />
           <Route path="profil" element={<ProfilSaya />} />
         </Route>
@@ -90,7 +93,7 @@ const AppRouter = () => {
           path="/instructor"
           element={
             <StudyPlanProvider>
-              <Outlet />
+              <DashboardLayout menuItems={instructorNavigation}/>
             </StudyPlanProvider>
           }
         >
@@ -103,7 +106,7 @@ const AppRouter = () => {
         </Route>
 
         {/* Student Routes */}
-        <Route path="/student" element={<StudentLayout />}>
+          <Route path="/student" element={<DashboardLayout menuItems={studentNavigation}/>}>
           <Route index element={<StudentDashboard />} />
           <Route path="profil" element={<ProfilePage />} />
           <Route path="instruktur" element={<InstructurPage />} />
