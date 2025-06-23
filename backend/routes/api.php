@@ -16,6 +16,13 @@ use App\Http\Controllers\AdminTransaksiController;
 use App\Http\Controllers\PembayaranController;
 use App\Http\Controllers\NotifikasiAdminController;
 
+//pembelajaran
+use App\Http\Controllers\PageController;
+use App\Http\Controllers\QuestionController;
+use App\Http\Controllers\QuizController;
+use App\Http\Controllers\UserProgressController;
+use App\Http\Controllers\UnitAccessController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -118,4 +125,34 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/pembayaran/riwayat', [PembayaranController::class, 'riwayatTransaksi']);  // Riwayat transaksi
     });
    
+    //Pembelajaran fase 1
+      //pages
+    Route::get('/pages', [PageController::class, 'index']);
+    Route::post('/pages', [PageController::class, 'store']);
+    Route::put('/pages/{id}', [PageController::class, 'update']);
+    Route::delete('/pages/{id}', [PageController::class, 'destroy']);
+
+    // Upload for KelolaSimulasi.js compatibility
+    Route::post('/upload', [PageController::class, 'upload']);
+
+    // Progress Routes
+    Route::post('/pages/{pageId}/complete', [UserProgressController::class, 'markComplete']);
+    Route::get('/progress/unit', [UserProgressController::class, 'getUnitProgress']);
+
+    //  UNIT ACCESS ROUTES - Skill-based unit unlocking
+    Route::get('/units/unlocked', [UnitAccessController::class, 'getUnlockedUnits']);
+    Route::get('/units/check-access', [UnitAccessController::class, 'checkUnitAccess']);
+
+    //questions
+    Route::get('/questions', [QuestionController::class, 'index']); // ?modul=x&unit_number=y
+    Route::post('/questions', [QuestionController::class, 'store']);
+    Route::put('/questions/{id}', [QuestionController::class, 'update']);
+    Route::post('/questions/{id}', [QuestionController::class, 'update']); // For _method=PUT
+    Route::delete('/questions/{id}', [QuestionController::class, 'destroy']);
+
+    //quiz
+    Route::post('/quiz/submit', [QuizController::class, 'submit']);
+    Route::get('/quiz/answers', [QuizController::class, 'answers']);
+
+
 });
