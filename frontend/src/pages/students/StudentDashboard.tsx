@@ -1,9 +1,9 @@
 // src/pages/student/StudentDashboard.tsx
 import React from "react";
-import { useStudentLayoutContext } from "../../layouts/StudentLayout";
+import { useDashboardLayoutContext } from "../../layouts/DashboardLayout";
 
 const StudentDashboard: React.FC = () => {
-  const { title, subtitle } = useStudentLayoutContext();
+  const { title, subtitle } = useDashboardLayoutContext();
 
   return (
     <div>

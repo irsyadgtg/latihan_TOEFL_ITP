@@ -1,51 +1,45 @@
-import InstructorLayout from '../../layouts/InstructorLayout';
+import React, { useState, useEffect } from 'react'; // Pastikan useEffect diimport
 import StudyPlanRequestItem from '../../components/instructor/StudyPlanRequestItem';
 import { useStudyPlan, type StudyPlanStatus } from '../../contexts/StudyPlanContext';
-
- 
+import { useDashboardLayoutContext } from '../../layouts/DashboardLayout'; // Import context DashboardLayout
 
 const TinjauRencanaBelajar: React.FC = () => {
-  
   const { requests } = useStudyPlan();
 
-  return (
-    <InstructorLayout
-      title="Pengajuan Rencana Belajar"
-      note="Instruktur dapat memverifikasi rencana belajar dari peserta"
-    >
-      <div className="bg-white p-8 rounded-xl shadow-lg">
-        {/* Seluruh bagian navigasi tab dihapus */}
-        {/* <div className="mb-6 border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-            {tabs.map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`${activeTab === tab
-                    ? 'border-red-500 text-red-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-              >
-                {tab}
-              </button>
-            ))}
-          </nav>
-        </div> */}
+  // Ambil setter dari context DashboardLayout
+  const { setTitle, setSubtitle } = useDashboardLayoutContext();
 
-        <div className="space-y-4">
-          {requests.length > 0 ? ( // Langsung menggunakan requests
-            requests.map(request => (
-              <StudyPlanRequestItem
-                key={request.id}
-                request={request}
-              />
-            ))
-          ) : (
-            <p className="text-center text-gray-500 py-10">Tidak ada pengajuan untuk kategori ini.</p>
-          )}
-        </div>
+  // Gunakan useEffect untuk mengatur judul saat komponen dimuat
+  useEffect(() => {
+    setTitle("Tinjau Rencana Belajar");
+    setSubtitle("Lihat dan berikan feedback pada pengajuan rencana belajar.");
+    
+    // Opsional: Cleanup function jika Anda ingin mengatur ulang judul saat komponen unmount
+    // return () => {
+    //   setTitle(""); 
+    //   setSubtitle("");
+    // };
+  }, [setTitle, setSubtitle]); // Pastikan dependensi dimasukkan
+
+  return (
+    <div className="bg-white p-8 rounded-xl shadow-lg mt-4"> {/* Tambahkan mt-4 jika perlu margin atas */}
+      {/* Seluruh bagian navigasi tab dihapus */}
+
+      {/* Bagian judul dan subjudul lokal dihapus karena sudah diatur via context */}
+
+      <div className="space-y-4">
+        {requests.length > 0 ? ( // Langsung menggunakan requests
+          requests.map(request => (
+            <StudyPlanRequestItem
+              key={request.id}
+              request={request}
+            />
+          ))
+        ) : (
+          <p className="text-center text-gray-500 py-10">Tidak ada pengajuan untuk kategori ini.</p>
+        )}
       </div>
-    </InstructorLayout>
+    </div>
   );
 };
 

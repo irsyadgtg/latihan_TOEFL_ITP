@@ -1,14 +1,10 @@
-import Layout from "../../../layouts/AdminView";
 
 // icons
 import { ChevronDown } from "lucide-react";
 
 export default function TambahInstruktur() {
   return (
-    <Layout
-      title="Tambah Instruktur"
-      note={"Masukkan data untuk menambahkan instructor baru"}
-    >
+    
       <div className="w-full py-2 ">
         {/* Form */}
         <form className="space-y-6">
@@ -155,6 +151,5 @@ export default function TambahInstruktur() {
           </div>
         </form>
       </div>
-    </Layout>
   );
 }

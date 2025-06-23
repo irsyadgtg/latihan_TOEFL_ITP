@@ -4,7 +4,6 @@ interface Transaction {
   id: string;
   courseName: string;
   timestamp: string;
-  paymentMethod: string;
   amount: string;
   status: string;
   notes?: string;
@@ -18,7 +17,7 @@ const getStatusColor = (status: string) => {
   switch (status.toLowerCase()) {
     case "berhasil":
       return "text-green-600";
-    case "gagal":
+    case "ditolak":
       return "text-red-600";
     case "pending":
       return "text-yellow-500";
@@ -42,10 +41,6 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ data }) => {
         <div className="min-w-[160px]">
           <p className="text-gray-500">Timestamp</p>
           <p className="font-medium">{data.timestamp}</p>
-        </div>
-        <div className="min-w-[200px]">
-          <p className="text-gray-500">Metode Pembayaran</p>
-          <p className="font-medium">{data.paymentMethod}</p>
         </div>
         <div className="min-w-[120px]">
           <p className="text-gray-500">Jumlah</p>

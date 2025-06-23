@@ -1,5 +1,3 @@
-import Layout from "../../../layouts/AdminView";
-
 import FotoProfile from "../../../assets/image/foto.png";
 
 // icons
@@ -9,10 +7,6 @@ import { ChevronDown } from "lucide-react";
 export default function Dashboard() {
 
   return (
-    <Layout
-      title="Ubah Ketersediaan"
-      note={"Ubah jadwal ketersediaan instructor"}
-    >
       <div className="w-full py-2 px-28">
         {/* Header Profil */}
         <div className="flex items-center justify-between mb-8">
@@ -132,6 +126,5 @@ export default function Dashboard() {
           </div>
         </form>
       </div>
-    </Layout>
   );
 }

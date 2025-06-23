@@ -1,12 +1,8 @@
-import Layout from "../../../layouts/AdminView";
 import EditIcon from "../../../assets/icons/edit.svg";
 
 export default function UbahDetail() {
   return (
-    <Layout
-      title="Ubah Detail Paket Kursus"
-      note={"Mengubah detail paket kursus untuk diperbaharui"}
-    >
+    
       <div className="w-full py-2 ">
         {/* Form */}
         <form className="space-y-6">
@@ -91,6 +87,5 @@ export default function UbahDetail() {
           </div>
         </form>
       </div>
-    </Layout>
   );
 }

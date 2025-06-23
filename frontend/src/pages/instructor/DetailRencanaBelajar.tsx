@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import InstructorLayout from '../../layouts/InstructorLayout';
 import { useStudyPlan } from '../../contexts/StudyPlanContext';
 
 // DATA SIMULASI: Digunakan untuk pengembangan UI jika data dari context belum tersedia
@@ -137,7 +136,7 @@ const DetailRencanaBelajar: React.FC = () => {
 
 
   if (!studyPlanDetails) {
-    return <InstructorLayout title="Memuat..." note="Mohon tunggu..."><div className="p-8">Memuat detail rencana belajar...</div></InstructorLayout>;
+    // return <title="Memuat..." note="Mohon tunggu..."><div className="p-8">Memuat detail rencana belajar...</div></InstructorLayout>;
   }
 
   // The data from the context might not have the 'skills' property.
@@ -151,7 +150,7 @@ const DetailRencanaBelajar: React.FC = () => {
   const currentSkills = dataSource.skills[activeTab as keyof typeof dataSource.skills];
 
   return (
-    <InstructorLayout title="Detail Rencana Belajar" note="Instruktur dapat memverifikasi rencana belajar dari peserta">
+    // < title="Detail Rencana Belajar" note="Instruktur dapat memverifikasi rencana belajar dari peserta">
       <div className="p-6 md:p-8 bg-gray-50 min-h-screen">
       {!isGivingFeedback ? (
         // STATE 1: Tampilan Detail Pengajuan
@@ -280,7 +279,6 @@ const DetailRencanaBelajar: React.FC = () => {
         </div>
       )}
     </div>
-    </InstructorLayout>
   );
 };
 

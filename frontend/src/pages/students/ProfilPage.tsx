@@ -1,39 +1,50 @@
 import React, { useEffect, useState } from "react";
-import { useStudentLayoutContext } from "../../layouts/StudentLayout";
+import { useDashboardLayoutContext } from "../../layouts/DashboardLayout";
 import { FaEdit } from "react-icons/fa";
 
 const ProfilePage: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState({
-    fullName: "",
-    username: "",
+    fullName: "Khrsima", // Memberikan nilai awal agar ditampilkan
+    username: "khrsimanaam",
+    email: "khrsimamanang@gmail.com", // Tambahkan email ke state
+    idNumber: "12077139102019", // Tambahkan idNumber ke state
     address: "",
     phone: "",
-    duration: "",
+    coursePackage: "", // Tambahkan untuk paket kursus
+    duration: "", // Tambahkan untuk masa berlaku
   });
 
-  const { setTitle, setSubtitle } = useStudentLayoutContext();
+  const { setTitle, setSubtitle } = useDashboardLayoutContext();
 
   useEffect(() => {
     setTitle("Profil Saya");
     setSubtitle("Isikan Profil Pengguna Anda Disini");
-  }, []);
+  }, [setTitle, setSubtitle]); // Tambahkan setTitle, setSubtitle sebagai dependensi
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleEditToggle = () => {
+    if (isEditing) {
+      console.log("Data disimpan:", form);
+      // TODO: Lakukan API call untuk menyimpan data ke backend
+    }
     setIsEditing(!isEditing);
   };
 
+  // Gaya input yang konsisten
+  const inputStyles =
+    "w-full border border-gray-300 rounded-md px-4 py-2 text-sm disabled:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500";
+
   return (
     <div className="mx-auto p-6 rounded-lg bg-white mt-4">
-      {/* Header */}
-      <div className="flex items-end justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <div className="m-4 rounded-full border-3 border-black p-2 shadow-md">
-            <div className="rounded-full border-2 border-black p-2">
+      {/* Header Profil (Foto, Nama, Email, ID, Tombol Edit) */}
+      <div className="flex items-end justify-between pb-6 border-b border-gray-200">
+        <div className="flex items-start gap-4">
+          <div className="m-4 rounded-full border-[3px] border-gray-300 p-2 shadow-md">
+            <div className="rounded-full border-[1px] border-black p-2">
               <div className="w-32 h-32 rounded-full overflow-hidden">
                 <img
                   src="https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400"
@@ -44,25 +55,24 @@ const ProfilePage: React.FC = () => {
             </div>
           </div>
 
-          <div>
-            <h2 className="text-lg font-semibold">Khrsima</h2>
-            <p className="text-sm text-gray-600">khrsimamanang@gmail.com</p>
-            <p className="text-sm text-gray-500">12077139102019</p>
+          <div className="flex flex-col justify-start space-y-1 mt-2">
+            {/* Menggunakan data dari state 'form' */}
+            <h2 className="text-xl font-semibold">{form.fullName}</h2>
+            <p className="text-sm text-gray-600">{form.email}</p>
+            <p className="text-sm text-gray-500">{form.idNumber}</p>
           </div>
         </div>
         <button
           onClick={handleEditToggle}
-          className="text-sm border border-[#6B46C1] text-[#6B46C1] px-4 py-1 rounded-md hover:bg-[#6B46C1]/10 transition"
+          className="px-4 py-2 border border-[#6B46C1] text-[#6B46C1] rounded-lg hover:bg-[#6B46C1]/10 transition text-sm font-medium flex items-center gap-2"
         >
-          <div className="flex gap-2 items-center">
-            {isEditing ? "Simpan" : "Edit"}
-            {isEditing ? <></> : <FaEdit />}
-          </div>
+          {isEditing ? "Simpan" : "Edit"}
+          {!isEditing && <FaEdit className="w-4 h-4" />}
         </button>
       </div>
 
-      {/* Form */}
-      <div className="space-y-4">
+      {/* Form Input */}
+      <div className="pt-6 space-y-4">
         <div>
           <label className="block font-semibold mb-1">Nama Lengkap</label>
           <input
@@ -71,7 +81,7 @@ const ProfilePage: React.FC = () => {
             value={form.fullName}
             onChange={handleChange}
             disabled={!isEditing}
-            className="w-full border rounded-md px-4 py-2 text-sm disabled:bg-gray-100"
+            className={inputStyles}
           />
         </div>
         <div>
@@ -82,7 +92,7 @@ const ProfilePage: React.FC = () => {
             value={form.username}
             onChange={handleChange}
             disabled={!isEditing}
-            className="w-full border rounded-md px-4 py-2 text-sm disabled:bg-gray-100"
+            className={inputStyles}
           />
         </div>
         <div>
@@ -93,7 +103,7 @@ const ProfilePage: React.FC = () => {
             value={form.address}
             onChange={handleChange}
             disabled={!isEditing}
-            className="w-full border rounded-md px-4 py-2 text-sm disabled:bg-gray-100"
+            className={inputStyles}
           />
         </div>
         <div>
@@ -104,18 +114,18 @@ const ProfilePage: React.FC = () => {
             value={form.phone}
             onChange={handleChange}
             disabled={!isEditing}
-            className="w-full border rounded-md px-4 py-2 text-sm disabled:bg-gray-100"
+            className={inputStyles}
           />
         </div>
         <div>
           <label className="block font-semibold mb-1">Paket Kursus</label>
           <input
-            name="course"
+            name="coursePackage" // Nama ini harus konsisten dengan state 'form'
             placeholder="Masukkan paket kursus yang dipilih"
-            value={form.phone}
+            value={form.coursePackage} // Mengambil dari form.coursePackage
             onChange={handleChange}
             disabled={!isEditing}
-            className="w-full border rounded-md px-4 py-2 text-sm disabled:bg-gray-100"
+            className={inputStyles}
           />
         </div>
         <div>
@@ -128,7 +138,7 @@ const ProfilePage: React.FC = () => {
             value={form.duration}
             onChange={handleChange}
             disabled={!isEditing}
-            className="w-full border rounded-md px-4 py-2 text-sm disabled:bg-gray-100"
+            className={inputStyles}
           />
         </div>
       </div>
