@@ -34,7 +34,7 @@ class PesertaPaketKursus extends Model
 
     public function transaksi()
     {
-        return $this->hasMany(Transaksi::class, 'idPesertaPaketKursus');
+        return $this->hasOne(Transaksi::class, 'idPesertaPaketKursus');
     }
 
 }

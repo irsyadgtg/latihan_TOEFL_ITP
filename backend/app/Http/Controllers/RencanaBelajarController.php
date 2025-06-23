@@ -28,6 +28,17 @@ class RencanaBelajarController extends Controller
 
         $bolehMengajukan = false;
 
+        // Cek dan update otomatis jika sudah selesai
+        $rencanaBerjalan = PengajuanRencanaBelajar::where('idPeserta', $user->idPeserta)
+            ->where('status', 'sudah ada feedback')
+            ->whereDate('selesaiPada', '<=', Carbon::now())
+            ->get();
+
+        foreach ($rencanaBerjalan as $rencana) {
+            $rencana->status = 'selesai';
+            $rencana->save();
+        }
+
         if ($skorAwal) {
             $adaPending = PengajuanRencanaBelajar::where('idPeserta', $user->idPeserta)
                 ->where('status', 'pending')

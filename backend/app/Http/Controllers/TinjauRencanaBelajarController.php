@@ -18,6 +18,11 @@ class TinjauRencanaBelajarController extends Controller
     // Tampilkan daftar pengajuan yang harus ditinjau
     public function index()
     {
+         // Update otomatis semua yang sudah waktunya selesai
+        PengajuanRencanaBelajar::where('status', 'sudah ada feedback')
+            ->whereDate('selesaiPada', '<=', Carbon::now())
+            ->update(['status' => 'selesai']);
+
         $pengajuan = PengajuanRencanaBelajar::with('peserta.pengguna')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -86,7 +91,7 @@ class TinjauRencanaBelajarController extends Controller
     public function beriFeedback(Request $request, $id)
     {
         $pengajuan = PengajuanRencanaBelajar::findOrFail($id);
-        if ($pengajuan->status == 'sudah ada feedback') {
+        if ($pengajuan->status != 'pending') {
             return response()->json([
                 'message' => 'Pengajuan ini sudah memiliki feedback. Tidak bisa memberikan feedback ulang.'
             ], 400);

@@ -12,6 +12,9 @@ use App\Http\Controllers\RencanaBelajarController;
 use App\Http\Controllers\TinjauRencanaBelajarController;
 use App\Http\Controllers\PantauPesertaController;
 use App\Http\Controllers\DashboardAdminController;
+use App\Http\Controllers\AdminTransaksiController;
+use App\Http\Controllers\PembayaranController;
+use App\Http\Controllers\NotifikasiAdminController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,7 +52,6 @@ Route::get('/login', function () {
     return response()->json(['message' => 'Please login'], 401);
 })->name('login');
 
-
 //Logout
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
 
@@ -78,6 +80,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/paket-kursus/{id}/aktivasi', [KelolaPaketKursusController::class, 'getDetailAktivasi']); //Detail buat atur aktivasi
         Route::patch('/paket-kursus/{id}/aktivasi', [KelolaPaketKursusController::class, 'toggleAktif']); //Atur aktivasi
         Route::get('/admin/pantau-peserta', [PantauPesertaController::class, 'index']); //Pantau peserta kursus
+        Route::get('/admin/transaksi', [AdminTransaksiController::class, 'listTransaksi']); // List semua transaksi
+        Route::get('/admin/transaksi/{id}', [AdminTransaksiController::class, 'detailTransaksi']); // Detail transaksi
+        Route::patch('/admin/transaksi/{id}/verifikasi', [AdminTransaksiController::class, 'verifikasiTransaksi']); // Verifikasi transaksi
+        Route::get('/admin/notifikasi/terbaru', [NotifikasiAdminController::class, 'getNotifikasiTerbaru']); //Notikisai admin terbaru
+        Route::get('/admin/notifikasi', [NotifikasiAdminController::class, 'getSemuaNotifikasi']); //All notif admin
+        Route::post('/admin/notifikasi/tandai/{id}', [NotifikasiAdminController::class, 'tandaiTerbaca']); //Tandai terbaca di notif admin
     });
 
     //Daftar Instruktur
@@ -102,6 +110,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/peserta/rencana-belajar', [RencanaBelajarController::class, 'store']);
         Route::get('/peserta/rencana-belajar/{id}', [RencanaBelajarController::class, 'show']);
         Route::get('/peserta/skill', [RencanaBelajarController::class, 'showSkill']);
+        Route::get('/peserta/paket-kursus', [KelolaPaketKursusController::class, 'indexPeserta']); //Daftar paket kursus pada peserta
+        Route::get('/paket/{id}', [PembayaranController::class, 'showPaketDetail']); // Detail paket peserta
+        Route::get('/paket/{id}/eligibility', [PembayaranController::class, 'checkEligibility']);  // Cek eligibility
+        Route::get('/paket/{id}/beli', [PembayaranController::class, 'beliPaketInfo']); // Detail info pembayaran paket
+        Route::post('/paket/{id}/beli', [PembayaranController::class, 'beliPaket']);   // Beli paket (upload bukti pembayaran)
+        Route::get('/pembayaran/riwayat', [PembayaranController::class, 'riwayatTransaksi']);  // Riwayat transaksi
     });
    
 });
