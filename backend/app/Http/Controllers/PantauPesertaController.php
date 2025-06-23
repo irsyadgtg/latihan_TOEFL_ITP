@@ -15,7 +15,7 @@ class PantauPesertaController extends Controller
         $search = $request->input('search');
 
         $query = Pengguna::with([
-            'peserta.pesertaPaket.paketKursus'
+            'peserta.pesertaPaket.paket'
         ])->whereNotNull('idPeserta'); // Pastiin hanya peserta, bukan pegawai
 
         if ($search) {
@@ -39,8 +39,10 @@ class PantauPesertaController extends Controller
                 'namaLengkap' => $peserta->namaLengkap,
                 'username' => $pengguna->username,
                 'email' => $pengguna->email,
-                'paketKursus' => $paketSaatIni ? $paketSaatIni->paketKursus->namaPaket : null,
-                'sisaMasaBerlaku' => $paketSaatIni ? now()->diffInDays(optional($paketSaatIni->tglBerakhir)) : null,
+                'paketKursus' => $paketSaatIni ? $paketSaatIni->paket->namaPaket : null,
+                'sisaMasaBerlaku' => $paketSaatIni && $paketSaatIni->tglBerakhir
+                ? now()->diffInDays($paketSaatIni->tglBerakhir)
+                : null,
             ];
         });
 

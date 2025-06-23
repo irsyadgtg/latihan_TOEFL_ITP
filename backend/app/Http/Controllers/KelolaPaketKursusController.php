@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\PaketKursus;
+use App\Models\Peserta;
+use App\Models\Pegawai;
+use App\Models\PesertaPaketKursus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;;
 use Illuminate\Support\Facades\Validator;
@@ -12,12 +15,42 @@ class KelolaPaketKursusController extends Controller
     // GET: Semua paket kursus
    public function index()
    {
-        $pakets = PaketKursus::with('pegawai:id,nama') //ambil id sama nama aja
+        $pakets = PaketKursus::with('pegawai:idPegawai,namaLengkap') //ambil id sama nama aja
             ->select('idPaketKursus', 'namaPaket', 'harga', 'fasilitas', 'masaBerlaku', 'aktif', 'idPegawai')
             ->get();
 
         return response()->json($pakets, 200);
     }
+
+    // GET: Semua paket aktif dan yg dibeli peserta itu
+    public function indexPeserta()
+    {
+        $peserta = Auth::user();
+
+        // Ambil semua paket yang aktif (global)
+        $paketAktifGlobal = PaketKursus::with('pegawai:idPegawai,namaLengkap')
+            ->select('idPaketKursus', 'namaPaket', 'harga', 'fasilitas', 'masaBerlaku', 'aktif', 'idPegawai')
+            ->where('aktif', true)
+            ->get();
+
+        // Ambil semua paket yang dia sudah beli dan masih aktif statusnya (khusus peserta)
+        $paketDibeli = PaketKursus::with('pegawai:id,nama')
+            ->select('idPaketKursus', 'namaPaket', 'harga', 'fasilitas', 'masaBerlaku', 'aktif', 'idPegawai')
+            ->whereIn('idPaketKursus', function($query) use ($peserta) {
+                $query->select('idPaketKursus')
+                    ->from('peserta_paket_kursus')
+                    ->where('idPeserta', $peserta->idPeserta)
+                    ->where('statusAktif', true)
+                    ->where('paketSaatIni', true);
+            })
+            ->get();
+
+        // Gabungkan (biar ga duplikat kalo ada paket aktif yang kebetulan juga udah dia beli)
+        $pakets = $paketAktifGlobal->merge($paketDibeli)->unique('idPaketKursus')->values();
+
+        return response()->json($pakets, 200);
+    }
+
 
     // POST: Tambah paket kursus (S-1)
     public function store(Request $request)
