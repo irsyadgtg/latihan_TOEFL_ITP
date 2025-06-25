@@ -15,11 +15,11 @@ class TestDataSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Buat Pegawai (Admin & Instruktur) - cek duplicate
+        // 1. Buat Pegawai (Admin & 3 Instruktur) - cek duplicate
         $existingAdmin = DB::table('pegawai')->where('nik_nip', 'ADM001')->first();
         if ($existingAdmin) {
             $pegawaiAdmin = $existingAdmin->idPegawai;
-            echo "   - Pegawai Admin sudah ada, skip...\n";
+            echo "   - Pegawai Admin sudah ada (NIK: ADM001), skip...\n";
         } else {
             $pegawaiAdmin = DB::table('pegawai')->insertGetId([
                 'nik_nip' => 'ADM001',
@@ -32,47 +32,90 @@ class TestDataSeeder extends Seeder
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
             ]);
-            echo "   - Pegawai Admin berhasil dibuat\n";
+            echo "   - Pegawai Admin berhasil dibuat (NIK: ADM001)\n";
         }
 
-        $existingInstrukturPegawai = DB::table('pegawai')->where('nik_nip', 'INS001')->first();
-        if ($existingInstrukturPegawai) {
-            $pegawaiInstruktur = $existingInstrukturPegawai->idPegawai;
-            echo "   - Pegawai Instruktur sudah ada, skip...\n";
-        } else {
-            $pegawaiInstruktur = DB::table('pegawai')->insertGetId([
+        // NEW: Create 3 Instructors
+        $instrukturData = [
+            [
                 'nik_nip' => 'INS001',
-                'jabatan' => 'Instruktur',
                 'namaLengkap' => 'Dr. Jane Smith',
                 'nomorTelepon' => '081234567891',
-                'alamat' => 'Jl. Instruktur No. 2',
-                'urlFotoProfil' => null,
-                'status' => 'aktif',
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now(),
-            ]);
-            echo "   - Pegawai Instruktur berhasil dibuat\n";
-        }
-
-        // 2. Buat Instruktur - cek duplicate
-        $existingInstruktur = DB::table('instruktur')->where('idPegawai', $pegawaiInstruktur)->first();
-        if ($existingInstruktur) {
-            $instrukturId = $existingInstruktur->idInstruktur;
-            echo "   - Instruktur sudah ada, skip...\n";
-        } else {
-            $instrukturId = DB::table('instruktur')->insertGetId([
-                'keahlian' => 'TOEFL ITP Training',
+                'alamat' => 'Jl. Instruktur No. 1',
+                'keahlian' => 'TOEFL ITP Listening & Structure',
                 'waktuMulai' => '08:00:00',
+                'waktuBerakhir' => '16:00:00',
+                'username' => 'instruktur1',
+                'email' => 'jane.smith@lms.com'
+            ],
+            [
+                'nik_nip' => 'INS002',
+                'namaLengkap' => 'Prof. Ahmad Rahman',
+                'nomorTelepon' => '081234567892',
+                'alamat' => 'Jl. Instruktur No. 2',
+                'keahlian' => 'TOEFL ITP Reading & Vocabulary',
+                'waktuMulai' => '09:00:00',
                 'waktuBerakhir' => '17:00:00',
-                'tglKetersediaan' => Carbon::today(),
-                'idPegawai' => $pegawaiInstruktur,
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now(),
-            ]);
-            echo "   - Instruktur berhasil dibuat\n";
+                'username' => 'instruktur2',
+                'email' => 'ahmad.rahman@lms.com'
+            ],
+            [
+                'nik_nip' => 'INS003',
+                'namaLengkap' => 'Ms. Sarah Wilson',
+                'nomorTelepon' => '081234567893',
+                'alamat' => 'Jl. Instruktur No. 3',
+                'keahlian' => 'TOEFL ITP Grammar & Writing',
+                'waktuMulai' => '13:00:00',
+                'waktuBerakhir' => '21:00:00',
+                'username' => 'instruktur3',
+                'email' => 'sarah.wilson@lms.com'
+            ]
+        ];
+
+        $pegawaiInstrukturIds = [];
+        $instrukturIds = [];
+
+        foreach ($instrukturData as $index => $data) {
+            // Create Pegawai Instruktur
+            $existingPegawai = DB::table('pegawai')->where('nik_nip', $data['nik_nip'])->first();
+            if ($existingPegawai) {
+                $pegawaiInstrukturIds[] = $existingPegawai->idPegawai;
+                echo "   - Pegawai {$data['namaLengkap']} sudah ada (NIK: {$data['nik_nip']}), skip...\n";
+            } else {
+                $pegawaiInstrukturIds[] = DB::table('pegawai')->insertGetId([
+                    'nik_nip' => $data['nik_nip'],
+                    'jabatan' => 'Instruktur',
+                    'namaLengkap' => $data['namaLengkap'],
+                    'nomorTelepon' => $data['nomorTelepon'],
+                    'alamat' => $data['alamat'],
+                    'urlFotoProfil' => null,
+                    'status' => 'aktif',
+                    'created_at' => Carbon::now(),
+                    'updated_at' => Carbon::now(),
+                ]);
+                echo "   - Pegawai {$data['namaLengkap']} berhasil dibuat (NIK: {$data['nik_nip']})\n";
+            }
+
+            // Create Instruktur Record
+            $existingInstruktur = DB::table('instruktur')->where('idPegawai', $pegawaiInstrukturIds[$index])->first();
+            if ($existingInstruktur) {
+                $instrukturIds[] = $existingInstruktur->idInstruktur;
+                echo "   - Record Instruktur {$data['namaLengkap']} sudah ada, skip...\n";
+            } else {
+                $instrukturIds[] = DB::table('instruktur')->insertGetId([
+                    'keahlian' => $data['keahlian'],
+                    'waktuMulai' => $data['waktuMulai'],
+                    'waktuBerakhir' => $data['waktuBerakhir'],
+                    'tglKetersediaan' => Carbon::today(), // TODAY for testing
+                    'idPegawai' => $pegawaiInstrukturIds[$index],
+                    'created_at' => Carbon::now(),
+                    'updated_at' => Carbon::now(),
+                ]);
+                echo "   - Record Instruktur {$data['namaLengkap']} berhasil dibuat\n";
+            }
         }
 
-        // 3. Buat Peserta Kursus (cek duplicate dulu)
+        // 2. Buat Peserta Kursus (cek duplicate dulu)
         $pesertaIds = [];
         $timestamp = Carbon::now()->format('YmdHis');
         $namaPeserta = [
@@ -111,7 +154,7 @@ class TestDataSeeder extends Seeder
             }
         }
 
-        // 4. Buat Pengguna (Admin, Instruktur, Peserta)
+        // 3. Buat Pengguna (Admin & 3 Instruktur & Peserta)
         // Admin
         $existingAdmin = DB::table('pengguna')->where('email', 'admin@lms.com')->orWhere('username', 'admin')->first();
         if (!$existingAdmin) {
@@ -126,31 +169,45 @@ class TestDataSeeder extends Seeder
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
             ]);
-            echo "   - Admin user berhasil dibuat\n";
+            echo "   - Admin user berhasil dibuat (admin@lms.com)\n";
         } else {
-            echo "   - Admin user sudah ada, skip...\n";
+            echo "   - Admin user sudah ada ({$existingAdmin->email}), skip...\n";
         }
 
-        // Instruktur
-        $existingInstruktur = DB::table('pengguna')->where('email', 'instruktur@lms.com')->orWhere('username', 'instruktur')->first();
-        if (!$existingInstruktur) {
-            DB::table('pengguna')->insert([
-                'username' => 'instruktur',
-                'email' => 'instruktur@lms.com',
-                'email_verified_at' => Carbon::now(),
-                'password' => Hash::make('password'),
-                'role' => 'instruktur',
-                'idPeserta' => null,
-                'idPegawai' => $pegawaiInstruktur,
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now(),
-            ]);
-            echo "   - Instruktur user berhasil dibuat\n";
-        } else {
-            echo "   - Instruktur user sudah ada, skip...\n";
+        // Create 3 Instruktur Users
+        foreach ($instrukturData as $index => $data) {
+            $existingInstrukturUser = DB::table('pengguna')
+                ->where('email', $data['email'])
+                ->orWhere('username', $data['username'])
+                ->first();
+                
+            if (!$existingInstrukturUser) {
+                DB::table('pengguna')->insert([
+                    'username' => $data['username'],
+                    'email' => $data['email'],
+                    'email_verified_at' => Carbon::now(),
+                    'password' => Hash::make('password'),
+                    'role' => 'instruktur',
+                    'idPeserta' => null,
+                    'idPegawai' => $pegawaiInstrukturIds[$index],
+                    'created_at' => Carbon::now(),
+                    'updated_at' => Carbon::now(),
+                ]);
+                echo "   - Instruktur user {$data['namaLengkap']} berhasil dibuat ({$data['email']})\n";
+            } else {
+                echo "   - Instruktur user {$data['namaLengkap']} sudah ada ({$existingInstrukturUser->email}), skip...\n";
+                
+                // Update idPegawai if user exists but linked to wrong pegawai
+                if ($existingInstrukturUser->idPegawai != $pegawaiInstrukturIds[$index]) {
+                    DB::table('pengguna')
+                        ->where('idPengguna', $existingInstrukturUser->idPengguna)
+                        ->update(['idPegawai' => $pegawaiInstrukturIds[$index]]);
+                    echo "   - Fixed instruktur user linkage untuk {$data['namaLengkap']}\n";
+                }
+            }
         }
 
-        // Peserta
+        // Peserta Users
         foreach ($pesertaIds as $index => $pesertaId) {
             $username = 'peserta' . ($index + 1);
             $existingPesertaUser = DB::table('pengguna')->where('email', $namaPeserta[$index]['email'])->orWhere('username', $username)->first();
@@ -172,7 +229,7 @@ class TestDataSeeder extends Seeder
             }
         }
 
-        // 5. Buat Pengajuan Skor Awal (semua disetujui) - cek duplicate
+        // 4. Buat Pengajuan Skor Awal (semua disetujui) - cek duplicate
         $skorAwalIds = [];
         foreach ($pesertaIds as $index => $pesertaId) {
             // Cek apakah peserta sudah punya skor awal yang disetujui
@@ -203,7 +260,7 @@ class TestDataSeeder extends Seeder
             }
         }
 
-        // 6. Buat Pengajuan Rencana Belajar - cek duplicate
+        // 5. Buat Pengajuan Rencana Belajar - cek duplicate
         $rencanaIds = [];
         $targetWaktuOptions = ['2 minggu', '3 minggu', '1 bulan'];
         $durasiOptions = ['<1 jam', '<2 jam', '2-3 jam'];
@@ -247,7 +304,7 @@ class TestDataSeeder extends Seeder
             }
         }
 
-        // 7. Buat Detail Pengajuan Rencana Belajar (skill yang diminta peserta - random) - cek duplicate
+        // 6. Buat Detail Pengajuan Rencana Belajar (skill yang diminta peserta - random) - cek duplicate
         foreach ($rencanaIds as $index => $rencanaId) {
             // Cek apakah detail pengajuan sudah ada
             $existingDetail = DB::table('detail_pengajuan_rencana_belajar')
@@ -271,7 +328,7 @@ class TestDataSeeder extends Seeder
             }
         }
 
-        // 8. Buat Feedback Rencana Belajar - cek duplicate
+        // 7. Buat Feedback Rencana Belajar - UPDATED: Distribute among 3 instructors
         $feedbackIds = [];
         foreach ($rencanaIds as $index => $rencanaId) {
             // Cek apakah feedback sudah ada
@@ -283,18 +340,21 @@ class TestDataSeeder extends Seeder
                 $feedbackIds[] = $existingFeedback->idFeedbackRencanaBelajar;
                 echo "   - Feedback {$namaPeserta[$index]['nama']} sudah ada, skip...\n";
             } else {
+                // DISTRIBUTE: Round-robin assign to 3 instructors
+                $assignedInstrukturId = $instrukturIds[$index % 3];
+                
                 $feedbackIds[] = DB::table('feedback_rencana_belajar')->insertGetId([
                     'tglPemberianFeedback' => Carbon::now()->subDays(rand(1, 5)),
                     'idPengajuanRencanaBelajar' => $rencanaId,
-                    'idInstruktur' => $instrukturId,
+                    'idInstruktur' => $assignedInstrukturId,
                     'created_at' => Carbon::now(),
                     'updated_at' => Carbon::now(),
                 ]);
-                echo "   - Feedback {$namaPeserta[$index]['nama']} berhasil dibuat\n";
+                echo "   - Feedback {$namaPeserta[$index]['nama']} berhasil dibuat (assigned to instruktur " . ($index % 3 + 1) . ")\n";
             }
         }
 
-        // 9. Buat Detail Feedback Rencana Belajar (skill final yang diberikan - random dari yang diminta) - cek duplicate
+        // 8. Buat Detail Feedback Rencana Belajar (skill final yang diberikan - random dari yang diminta) - cek duplicate
         foreach ($feedbackIds as $index => $feedbackId) {
             // Cek apakah detail feedback sudah ada
             $existingDetailFeedback = DB::table('detail_feedback_rencana_belajar')
@@ -340,20 +400,24 @@ class TestDataSeeder extends Seeder
         echo "   - " . count($skorAwalIds) . " skor awal data\n";
         echo "   - " . count($rencanaIds) . " rencana belajar data\n";
         echo "   - " . count($feedbackIds) . " feedback data\n";
-        echo "   - 1 admin, 1 instruktur\n";
+        echo "   - 1 admin, 3 instruktur\n";
         echo "\n🔑 Login credentials:\n";
         echo "   Admin: admin@lms.com / password\n";
-        echo "   Instruktur: instruktur@lms.com / password\n";
+        echo "   Instruktur 1: jane.smith@lms.com / password (Dr. Jane Smith - Listening & Structure - 08:00-16:00)\n";
+        echo "   Instruktur 2: ahmad.rahman@lms.com / password (Prof. Ahmad Rahman - Reading & Vocabulary - 09:00-17:00)\n";
+        echo "   Instruktur 3: sarah.wilson@lms.com / password (Ms. Sarah Wilson - Grammar & Writing - 13:00-21:00)\n";
         foreach ($namaPeserta as $index => $peserta) {
             echo "   Peserta" . ($index + 1) . ": " . $peserta['email'] . " / password\n";
         }
-        echo "\n📋 Check mapping dengan query:\n";
-        echo "   SELECT p.namaLengkap, s.kategori, s.skill\n";
-        echo "   FROM detail_feedback_rencana_belajar dfb\n";
-        echo "   JOIN feedback_rencana_belajar fb ON dfb.idFeedbackRencanaBelajar = fb.idFeedbackRencanaBelajar\n";
-        echo "   JOIN pengajuan_rencana_belajar prb ON fb.idPengajuanRencanaBelajar = prb.idPengajuanRencanaBelajar\n";
-        echo "   JOIN peserta_kursus p ON prb.idPeserta = p.idPeserta\n";
-        echo "   JOIN skill s ON dfb.idSkill = s.idSkill\n";
-        echo "   ORDER BY p.namaLengkap, s.idSkill;\n";
+        echo "\n🕒 Instructor Availability (TODAY - " . Carbon::today() . "):\n";
+        echo "   - Dr. Jane Smith: 08:00-16:00 (Available for consultation)\n";
+        echo "   - Prof. Ahmad Rahman: 09:00-17:00 (Available for consultation)\n";
+        echo "   - Ms. Sarah Wilson: 13:00-21:00 (Available for consultation)\n";
+        echo "\n📋 Check instructor mapping:\n";
+        echo "   SELECT u.username, u.email, p.namaLengkap, i.keahlian, i.waktuMulai, i.waktuBerakhir\n";
+        echo "   FROM pengguna u\n";
+        echo "   JOIN pegawai p ON u.idPegawai = p.idPegawai\n";
+        echo "   JOIN instruktur i ON p.idPegawai = i.idPegawai\n";
+        echo "   WHERE u.role = 'instruktur';\n";
     }
 }
