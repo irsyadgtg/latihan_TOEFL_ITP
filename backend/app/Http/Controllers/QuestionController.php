@@ -3,17 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Models\Question;
+use App\Http\Controllers\UnitAccessController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Exception;
 
 class QuestionController extends Controller
 {
     public function index(Request $request)
     {
+        $user = Auth::user();
+        
         try {
-            // SIMULATION QUESTIONS: simulation_set = 1
+            // SIMULATION QUESTIONS: simulation_set = 1 - TIDAK BERUBAH
             if ($request->query('simulation_set') == 1) {
                 $query = Question::where('simulation_set_id', 1);
 
@@ -37,7 +41,51 @@ class QuestionController extends Controller
                 return response()->json($questions);
             }
 
-            // QUIZ LATIHAN: normal quiz per unit (TIDAK BOLEH TERGANGGU)
+            // QUIZ LATIHAN: Check access for peserta
+            $modul = $request->modul;
+            $unitNumber = $request->unit_number;
+            
+            // Admin/Instruktur bisa akses semua - TIDAK BERUBAH
+            if ($user->role === 'instruktur' || $user->role === 'admin') {
+                $quizQuestions = Question::where('modul', $modul)
+                    ->where('unit_number', $unitNumber)
+                    ->whereNull('simulation_set_id')
+                    ->orderByRaw("CASE WHEN order_number IS NULL THEN 999999 ELSE order_number END")
+                    ->get();
+
+                return response()->json($quizQuestions);
+            }
+            
+            // Peserta: Cek akses unit untuk quiz
+            if ($user->role === 'peserta') {
+                // Validasi input
+                if (!$modul || !isset($unitNumber)) {
+                    return response()->json(['error' => 'modul and unit_number required'], 400);
+                }
+                
+                $unitAccessController = new UnitAccessController();
+                $accessRequest = new Request(['modul' => $modul, 'unit_number' => $unitNumber]);
+                $accessResponse = $unitAccessController->checkUnitAccess($accessRequest);
+                $accessData = $accessResponse->getData(true);
+                
+                if (!$accessData['can_access']) {
+                    return response()->json([
+                        'error' => 'Access denied to this unit',
+                        'message' => $accessData['message']
+                    ], 403);
+                }
+                
+                // Student bisa akses, ambil questions - TIDAK BERUBAH
+                $quizQuestions = Question::where('modul', $modul)
+                    ->where('unit_number', $unitNumber)
+                    ->whereNull('simulation_set_id')
+                    ->orderByRaw("CASE WHEN order_number IS NULL THEN 999999 ELSE order_number END")
+                    ->get();
+
+                return response()->json($quizQuestions);
+            }
+
+            // Fallback - TIDAK BERUBAH
             $quizQuestions = Question::where('modul', $request->modul)
                 ->where('unit_number', $request->unit_number)
                 ->whereNull('simulation_set_id')

@@ -23,6 +23,14 @@ use App\Http\Controllers\QuizController;
 use App\Http\Controllers\UserProgressController;
 use App\Http\Controllers\UnitAccessController;
 
+use App\Http\Controllers\SimulationController;
+use App\Http\Controllers\SimulationSetController;
+use App\Http\Controllers\ConsultationController;
+use App\Http\Controllers\LaporanPembelajaranController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DashboardInstrukturController;
+use App\Http\Controllers\NotificationController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -68,7 +76,7 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 Route::get('/reset-password/{token}', function ($token) {
     return response()->json([
-        'message' => 'Ini halaman reset password (dummy). Token: '.$token
+        'message' => 'Ini halaman reset password (dummy). Token: ' . $token
     ]);
 })->name('password.reset');
 
@@ -112,7 +120,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/pengajuan-rencana-belajar/{id}', [TinjauRencanaBelajarController::class, 'show']); //Detail pengajuan rencana belajar yg ditinjau
         Route::post('/pengajuan-rencana-belajar/{id}/feedback', [TinjauRencanaBelajarController::class, 'beriFeedback']); //Beri feedback
     });
-    
+
     Route::middleware('role:peserta')->group(function () {
         Route::get('/profil/peserta', [KelolaProfilPesertaController::class, 'getProfilPeserta']); //Detail profil peserta
         Route::post('/profil/peserta', [KelolaProfilPesertaController::class, 'updateProfilPeserta']); //Update profil
@@ -130,9 +138,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/paket/{id}/beli', [PembayaranController::class, 'beliPaket']);   // Beli paket (upload bukti pembayaran)
         Route::get('/pembayaran/riwayat', [PembayaranController::class, 'riwayatTransaksi']);  // Riwayat transaksi
     });
-   
+
     //Pembelajaran fase 1
-      //pages
+    //pages
     Route::get('/pages', [PageController::class, 'index']);
     Route::post('/pages', [PageController::class, 'store']);
     Route::put('/pages/{id}', [PageController::class, 'update']);
@@ -159,6 +167,51 @@ Route::middleware(['auth:sanctum'])->group(function () {
     //quiz
     Route::post('/quiz/submit', [QuizController::class, 'submit']);
     Route::get('/quiz/answers', [QuizController::class, 'answers']);
+   
+    // pembelajaran fase 2
+    //sesi simulasi
+    Route::post('/simulation-sets', [SimulationSetController::class, 'store']);
+    Route::get('/simulation-sets', [SimulationSetController::class, 'index']);
+    Route::get('/simulation-sets/{id}/questions', [SimulationSetController::class, 'show']);
+
+    Route::get('/simulations/eligibility', [SimulationController::class, 'checkEligibility']);
+    Route::get('/simulations/completed', [SimulationController::class, 'getCompletedSimulations']);
+    Route::post('/simulations/start', [SimulationController::class, 'start']);
+    Route::get('/simulations/{simulationId}/questions', [SimulationController::class, 'getQuestions']);
+    Route::post('/simulations/submit-section', [SimulationController::class, 'submitSection']);
+    Route::get('/simulations/{simulationId}/results', [SimulationController::class, 'getResults']);
+
+    // SIMULATION SET ACTIVATION
+    Route::get('/simulation-sets/{id}', [SimulationSetController::class, 'show']);
+    Route::post('/simulation-sets/{id}/toggle-active', [SimulationSetController::class, 'toggleActive']);
+
+    // CONSULTATION ROUTES - Complete Set
+    Route::get('/consultations/instructors', [ConsultationController::class, 'getInstructors']);
+    Route::get('/consultations/students', [ConsultationController::class, 'getStudentConsultations']);
+    Route::get('/consultation-pages', [ConsultationController::class, 'getPages']);
+    Route::get('/consultation-units', [ConsultationController::class, 'getUnits']);
+
+    Route::get('/consultations/{targetId}', [ConsultationController::class, 'getConsultation']);
+    Route::post('/consultations/{instructorId}/messages', [ConsultationController::class, 'sendMessage']);
+    Route::post('/consultations/{consultationId}/instructor-message', [ConsultationController::class, 'instructorSendMessage']);
+    Route::post('/consultations/{consultationId}/end-session', [ConsultationController::class, 'endSession']);
+
+    //  NEW: LAPORAN PEMBELAJARAN ROUTES
+    Route::get('/laporan/progress', [LaporanPembelajaranController::class, 'getProgressOverview']);
+    Route::get('/laporan/detail', [LaporanPembelajaranController::class, 'getDetailedReport']);
+
+    // DASHBOARD PESERTA
+    Route::get('/dashboard/peserta', [DashboardController::class, 'pesertaDashboard']);
+    // DASHBOARD INSTRUKTUR
+    Route::get('/dashboard/instruktur', [DashboardInstrukturController::class, 'instrukturDashboard'])->middleware('auth:sanctum');
 
 
+    // NOTIFICATION ROUTES
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/recent', [NotificationController::class, 'recent']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'getUnreadCount']);
+    Route::get('/notifications/type/{type}', [NotificationController::class, 'getByType']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
 });
