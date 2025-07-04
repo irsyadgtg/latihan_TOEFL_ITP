@@ -1,12 +1,13 @@
-import { Component } from "react";
+// src/components/Score.tsx
+import { Component } from "react"; // Anda juga bisa menggunakan React.Component secara langsung
 
 type ScoreData = {
   name: string;
   score: string;
   status: string;
-  masa_berlaku: string;
-  timestamp: string;
-  keterangan: string;
+  masa_berlaku: string; // Seharusnya string yang merepresentasikan periode validitas
+  timestamp: string;    // Seharusnya string tanggal yang sudah diformat seperti "Kamis, 03 Juli 2025, 10:30"
+  keterangan: string;   // Bisa string seperti "Tidak ada" atau komentar aktual
 };
 
 type ScoreProps = {
@@ -31,14 +32,20 @@ export class Score extends Component<ScoreProps> {
           </div>
           <div className="flex-1 min-w-[150px]">
             <p className="text-gray-500 text-sm">Status Pengajuan</p>
-            <p>{status}</p>
+            {/* Menambahkan styling warna dasar untuk status */}
+            <p className={`
+              ${status === 'approved' ? 'text-green-600' : 
+                status === 'pending' ? 'text-yellow-600' : 
+                status === 'rejected' ? 'text-red-600' : 'text-gray-800'
+              }
+            `}>{status}</p>
           </div>
           <div className="flex-1 min-w-[150px]">
             <p className="text-gray-500 text-sm">Masa Berlaku</p>
             <p>{masa_berlaku}</p>
           </div>
           <div className="flex-1 min-w-[160px]">
-            <p className="text-gray-500 text-sm">Timestamp</p>
+            <p className="text-gray-500 text-sm">Timestamp Pengajuan</p> 
             <p>{timestamp}</p>
           </div>
           <div className="flex-1 min-w-[120px]">
