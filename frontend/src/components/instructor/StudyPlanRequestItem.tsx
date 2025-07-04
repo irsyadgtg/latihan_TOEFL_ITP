@@ -1,38 +1,58 @@
+// src/components/instructor/StudyPlanRequestItem.tsx
 import React from 'react';
-import { Link } from 'react-router-dom';
-import type { StudyPlanRequest } from '../../contexts/StudyPlanContext';
+import { format } from 'date-fns';
+import { id as idLocale } from 'date-fns/locale';
 
-interface StudyPlanRequestItemProps {
-  request: StudyPlanRequest;
+// Interface ini HARUS SAMA PERSIS dengan InstructorStudyPlanRequestItem dari TinjauRencanaBelajar.tsx
+// Ini adalah struktur data yang datang dari API untuk satu request
+interface InstructorStudyPlanRequestItem {
+  id: number;
+  tglPengajuan: string;
+  nama_peserta: string; // Proper name from API
+  email_peserta: string; // Proper name from API
+  status: string;
 }
 
-const StudyPlanRequestItem: React.FC<StudyPlanRequestItemProps> = ({ request }) => {
+// Interface props untuk komponen StudyPlanRequestItem
+interface StudyPlanRequestItemProps {
+  request: InstructorStudyPlanRequestItem; // Pastikan ini cocok dengan data API
+  onProvideFeedback: (id: number) => void;
+}
+
+const StudyPlanRequestItem: React.FC<StudyPlanRequestItemProps> = ({ request, onProvideFeedback }) => {
+  const formattedDate = request.tglPengajuan ? format(new Date(request.tglPengajuan), 'dd MMMM yyyy HH:mm', { locale: idLocale }) : '-';
+
+  let statusColorClass = "bg-gray-100 text-gray-800";
+  if (request.status === "pending") {
+    statusColorClass = "bg-yellow-100 text-yellow-800";
+  } else if (request.status === "Disetujui" || request.status === "sudah ada feedback") {
+    statusColorClass = "bg-green-100 text-green-800";
+  } else if (request.status === "Ditolak") {
+    statusColorClass = "bg-red-100 text-red-800";
+  }
+
   return (
-    <div className="flex justify-between items-center p-4 border border-gray-200 rounded-xl shadow-sm bg-white">
-      <div className="flex items-center space-x-12">
-        <div>
-          <p className="text-xs text-gray-500">Nama Lengkap</p>
-          <p className="font-semibold text-gray-800">{request.name}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-500">Email</p>
-          <p className="font-semibold text-gray-800">{request.email}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-500">Status Pengajuan</p>
-          <p className="font-semibold text-gray-800">{request.status}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-500">Timestamp</p>
-          <p className="font-semibold text-gray-800">{request.timestamp}</p>
-        </div>
+    <div className="border border-gray-200 rounded-lg p-4 mb-4 shadow-sm flex justify-between items-center">
+      <div>
+        <h4 className="text-lg font-semibold text-gray-800">
+          Pengajuan Rencana Belajar - {request.nama_peserta} {/* <--- GUNAKAN nama_peserta */}
+        </h4>
+        <p className="text-sm text-gray-600">
+          Email: {request.email_peserta} {/* <--- GUNAKAN email_peserta */}
+        </p>
+        <p className="text-sm text-gray-600">
+          Tanggal Pengajuan: {formattedDate}
+        </p>
+        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColorClass} mt-2 inline-block`}>
+          Status: {request.status}
+        </span>
       </div>
-      <Link
-        to={`/instructor/rencana-belajar/${request.id}`}
-        className="border border-indigo-300 text-indigo-600 font-semibold py-2 px-6 rounded-lg hover:bg-indigo-50 transition-colors duration-300 text-sm whitespace-nowrap"
+      <button
+        onClick={() => onProvideFeedback(request.id)}
+        className="px-4 py-2 bg-[#493BC0] text-white rounded-md hover:bg-[#3A2C9B] transition-colors"
       >
-        Tinjau
-      </Link>
+        Lihat Detail & Beri Feedback
+      </button>
     </div>
   );
 };
