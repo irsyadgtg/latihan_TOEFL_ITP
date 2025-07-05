@@ -163,7 +163,7 @@ export default function Profil() {
       // formData.append('_method', 'PATCH');
       
       try {
-        const response = await axiosInstance.patch('/profil/admin', formData, {
+        const response = await axiosInstance.post('/profil/admin', formData, {
           headers: {
             // Penting: Axios biasanya secara otomatis mengatur Content-Type: multipart/form-data
             // ketika Anda mengirim instance FormData. Namun, secara eksplisit menuliskannya

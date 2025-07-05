@@ -141,15 +141,6 @@ const AdminLoginPage: React.FC = () => {
           </button>
         </div>
       </form>
-
-      <div className="mt-6">
-        <p className="text-center text-sm text-gray-600">
-          Tidak punya akses Admin?{" "}
-          <Link to="/login" className="font-medium text-blue-700 hover:text-blue-600"> {/* Ganti link ke halaman login umum */}
-            Login Peserta
-          </Link>
-        </p>
-      </div>
     </AuthLayout>
   );
 };

@@ -98,7 +98,7 @@ const InstructorLoginPage: React.FC = () => {
     <AuthLayout title="Selamat datang di LMS LaC TOEFL ITP">
       <div className="mt-4">
         <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-          Login Instruktur
+          Masuk Instruktur
         </h2>
         <p className="mt-2 text-sm text-gray-600">
           Silakan masuk untuk mengakses dashboard Anda.
@@ -183,7 +183,7 @@ const InstructorLoginPage: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="flex w-full justify-center rounded-md border border-transparent bg-[#eed547] py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
+            className="flex w-full justify-center rounded-md border border-transparent bg-[#eec429] py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
           >
             {loading ? 'Memproses...' : 'Masuk'}
           </button>
