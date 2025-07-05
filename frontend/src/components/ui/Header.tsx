@@ -6,17 +6,16 @@ import { ChevronDown, LogOut } from 'lucide-react'; // Pastikan LogOut diimpor j
 import notifikasiIcon from '../../assets/icons/notifRed.svg'; // Ikon notifikasi Anda
 
 // image
-import profil from '../../assets/image/profil.png'; // Gambar profil Anda
+import profil from '../../assets/image/profil.jpg'; // Gambar profil Anda
 
 // --- PERBAIKAN DI SINI: Perbarui interface HeaderProps ---
 interface HeaderProps {
     title: string;
     note: string;
     unreadCount: number; // Tambahkan prop ini
-    refreshUnreadNotifications: () => void; // Tambahkan prop ini
 }
 
-export default function Header({ title, note, unreadCount, refreshUnreadNotifications }: HeaderProps) { // Destrukturisasi prop baru
+export default function Header({ title, note, unreadCount }: HeaderProps) { // Destrukturisasi prop baru
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
