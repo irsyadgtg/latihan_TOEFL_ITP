@@ -152,10 +152,8 @@ export default function ProfilPeserta() { // Ubah nama fungsi komponen agar unik
                 formData.append("foto", photoFile); // Konfirmasi nama field 'foto' dengan backend
             }
 
-            formData.append("_method", "PATCH"); // Penting untuk method spoofing
 
             try {
-                // Gunakan axiosInstance.post dengan _method: 'PATCH'
                 const response = await axiosInstance.post('/profil/peserta', formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data',

@@ -157,10 +157,6 @@ export default function Profil() {
         formData.append("fotoProfil", photoFile); 
       }
       
-      // ✅ PERUBAHAN DI SINI: Menggunakan axiosInstance.patch
-      // Jika backend Anda memerlukan _method=PATCH bahkan dengan axios.patch
-      // karena FormData, Anda mungkin perlu mengaktifkan ini kembali:
-      // formData.append('_method', 'PATCH');
       
       try {
         const response = await axiosInstance.post('/profil/admin', formData, {
