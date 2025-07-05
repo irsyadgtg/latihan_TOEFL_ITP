@@ -25,7 +25,8 @@ class DatabaseSeeder extends Seeder
             TestDataSeeder::class,
             QuestionSeeder::class,
             PageSeeder::class,
-            SimulationQuestionsSeeder::class
+            SimulationQuestionsSeeder::class,
+            PaketKursusSeeder::class,
         ]);
     }
 }

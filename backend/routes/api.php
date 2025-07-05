@@ -167,7 +167,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     //quiz
     Route::post('/quiz/submit', [QuizController::class, 'submit']);
     Route::get('/quiz/answers', [QuizController::class, 'answers']);
-   
+
     // pembelajaran fase 2
     //sesi simulasi
     Route::post('/simulation-sets', [SimulationSetController::class, 'store']);
@@ -181,15 +181,28 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/simulations/submit-section', [SimulationController::class, 'submitSection']);
     Route::get('/simulations/{simulationId}/results', [SimulationController::class, 'getResults']);
 
+    // handle jawaban sementara
+    Route::post('/simulations/submit-question', [SimulationController::class, 'submitQuestion']);
+    Route::get('/simulations/{simulationId}/existing-answers', [SimulationController::class, 'getExistingAnswers']);
+
+    // TIMER PERSISTENCE ROUTES
+    Route::post('/simulations/sync-timer', [SimulationController::class, 'syncTimer']);
+    Route::get('/simulations/{simulationId}/timer-state', [SimulationController::class, 'getTimerState']);
+    Route::post('/simulations/auto-submit-section', [SimulationController::class, 'autoSubmitSection']);
+
     // SIMULATION SET ACTIVATION
     Route::get('/simulation-sets/{id}', [SimulationSetController::class, 'show']);
     Route::post('/simulation-sets/{id}/toggle-active', [SimulationSetController::class, 'toggleActive']);
+
 
     // CONSULTATION ROUTES - Complete Set
     Route::get('/consultations/instructors', [ConsultationController::class, 'getInstructors']);
     Route::get('/consultations/students', [ConsultationController::class, 'getStudentConsultations']);
     Route::get('/consultation-pages', [ConsultationController::class, 'getPages']);
     Route::get('/consultation-units', [ConsultationController::class, 'getUnits']);
+
+    Route::get('/consultations/check-access', [ConsultationController::class, 'checkConsultationAccess']);
+
 
     Route::get('/consultations/{targetId}', [ConsultationController::class, 'getConsultation']);
     Route::post('/consultations/{instructorId}/messages', [ConsultationController::class, 'sendMessage']);
@@ -206,12 +219,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/dashboard/instruktur', [DashboardInstrukturController::class, 'instrukturDashboard'])->middleware('auth:sanctum');
 
 
-    // NOTIFICATION ROUTES
+    // NOTIFICATION ROUTES - Fixed (removed mark-all-read)
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::get('/notifications/recent', [NotificationController::class, 'recent']);
     Route::get('/notifications/unread-count', [NotificationController::class, 'getUnreadCount']);
+    Route::get('/notifications/stats', [NotificationController::class, 'getStats']);
     Route::get('/notifications/type/{type}', [NotificationController::class, 'getByType']);
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
-    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
     Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
+    Route::post('/notifications', [NotificationController::class, 'create']);
 });

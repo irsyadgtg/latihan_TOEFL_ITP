@@ -23,16 +23,68 @@ class QuizController extends Controller
             DB::beginTransaction();
             
             $idPengguna = Auth::id();
+            
+            // 🔥 VALIDASI BARU: Dapatkan info modul dan unit dari soal pertama
+            $firstQuestion = Question::findOrFail($validated['answers'][0]['question_id']);
+            
+            // Pastikan ini quiz latihan (bukan simulasi)
+            if ($firstQuestion->simulation_set_id !== null) {
+                return response()->json(['message' => 'Invalid question type'], 400);
+            }
+            
+            $modul = $firstQuestion->modul;
+            $unitNumber = $firstQuestion->unit_number;
+            
+            // 🔥 VALIDASI BARU: Hitung total soal yang seharusnya dijawab dalam unit ini
+            $totalQuestionsInUnit = Question::where('modul', $modul)
+                                           ->where('unit_number', $unitNumber)
+                                           ->whereNull('simulation_set_id') // Quiz latihan only
+                                           ->whereNotNull('correct_option') // Soal valid (bukan deskripsi group)
+                                           ->count();
+            
+            // 🔥 VALIDASI BARU: Pastikan jumlah jawaban sama dengan total soal
+            $totalAnswersSubmitted = count($validated['answers']);
+            
+            if ($totalAnswersSubmitted !== $totalQuestionsInUnit) {
+                return response()->json([
+                    'message' => 'Anda harus menjawab semua soal sebelum submit!',
+                    'details' => [
+                        'total_soal' => $totalQuestionsInUnit,
+                        'jawaban_dikirim' => $totalAnswersSubmitted,
+                        'soal_belum_dijawab' => $totalQuestionsInUnit - $totalAnswersSubmitted
+                    ]
+                ], 400);
+            }
+            
+            // 🔥 VALIDASI BARU: Pastikan semua question_id yang dikirim memang dari unit yang sama
+            $questionIds = array_column($validated['answers'], 'question_id');
+            $questionsInUnit = Question::where('modul', $modul)
+                                      ->where('unit_number', $unitNumber)
+                                      ->whereNull('simulation_set_id')
+                                      ->whereNotNull('correct_option')
+                                      ->pluck('id')
+                                      ->toArray();
+            
+            $invalidQuestions = array_diff($questionIds, $questionsInUnit);
+            if (!empty($invalidQuestions)) {
+                return response()->json([
+                    'message' => 'Terdapat soal yang tidak valid untuk unit ini',
+                    'invalid_question_ids' => $invalidQuestions
+                ], 400);
+            }
+            
+            // 🔥 VALIDASI BARU: Pastikan tidak ada soal yang duplikat dalam submission
+            $uniqueQuestionIds = array_unique($questionIds);
+            if (count($uniqueQuestionIds) !== count($questionIds)) {
+                return response()->json([
+                    'message' => 'Terdapat soal yang dijawab lebih dari sekali'
+                ], 400);
+            }
+            
             $results = [];
 
             foreach ($validated['answers'] as $answerData) {
                 $question = Question::findOrFail($answerData['question_id']);
-
-                // Ensure this is a quiz question (not simulation)
-                if ($question->simulation_set_id !== null) {
-                    return response()->json(['message' => 'Invalid question type'], 400);
-                }
-
                 $isCorrect = $question->correct_option === $answerData['selected_option'];
 
                 // Check if user already answered this question
@@ -71,15 +123,30 @@ class QuizController extends Controller
 
             DB::commit();
 
+            // 🔥 HITUNG SKOR FINAL
+            $correctCount = count(array_filter($results, fn($r) => $r['is_correct']));
+            $totalCount = count($results);
+            $percentage = round(($correctCount / $totalCount) * 100, 2);
+
             Log::info('Quiz submitted successfully', [
                 'idPengguna' => $idPengguna,
-                'questions_answered' => count($results),
-                'correct_answers' => count(array_filter($results, fn($r) => $r['is_correct']))
+                'modul' => $modul,
+                'unit_number' => $unitNumber,
+                'questions_answered' => $totalCount,
+                'correct_answers' => $correctCount,
+                'percentage' => $percentage
             ]);
 
             return response()->json([
                 'results' => $results,
-                'message' => 'Quiz submitted successfully'
+                'summary' => [
+                    'total_soal' => $totalCount,
+                    'jawaban_benar' => $correctCount,
+                    'persentase' => $percentage,
+                    'modul' => $modul,
+                    'unit' => $unitNumber
+                ],
+                'message' => 'Quiz berhasil diselesaikan!'
             ]);
         } catch (\Exception $e) {
             DB::rollBack();

@@ -14,87 +14,255 @@ class QuestionController extends Controller
 {
     public function index(Request $request)
     {
-        $user = Auth::user();
-        
         try {
+            $user = Auth::user();
+
+            if (!$user) {
+                return response()->json(['error' => 'Unauthenticated'], 401);
+            }
+
+            Log::info('QuestionController index called', [
+                'user_id' => $user->id ?? 'null',
+                'user_role' => $user->role ?? 'null',
+                'idPeserta' => $user->idPeserta ?? 'null',
+                'query_params' => $request->query()
+            ]);
+
             // SIMULATION QUESTIONS: simulation_set = 1 - TIDAK BERUBAH
             if ($request->query('simulation_set') == 1) {
                 $query = Question::where('simulation_set_id', 1);
 
-                // FIXED: Optional modul filter
                 if ($request->query('modul')) {
                     $query->where('modul', $request->query('modul'));
-                    Log::info('Fetched simulation questions for specific module', [
-                        'modul' => $request->query('modul')
-                    ]);
-                } else {
-                    Log::info('Fetched ALL simulation questions from all modules');
                 }
 
                 $questions = $query->orderByRaw("CASE WHEN order_number IS NULL THEN 999999 ELSE order_number END")
                     ->get();
 
-                Log::info('Simulation questions result', [
-                    'count' => $questions->count(),
-                    'has_modul_filter' => $request->query('modul') ? true : false
-                ]);
                 return response()->json($questions);
             }
 
-            // QUIZ LATIHAN: Check access for peserta
-            $modul = $request->modul;
-            $unitNumber = $request->unit_number;
-            
-            // Admin/Instruktur bisa akses semua - TIDAK BERUBAH
-            if ($user->role === 'instruktur' || $user->role === 'admin') {
-                $quizQuestions = Question::where('modul', $modul)
-                    ->where('unit_number', $unitNumber)
-                    ->whereNull('simulation_set_id')
+            // QUIZ LATIHAN
+            $modul = $request->query('modul');
+            $unitNumber = $request->query('unit_number');
+
+            // Admin/Instruktur: akses semua
+            if (in_array($user->role, ['instruktur', 'admin'])) {
+                $query = Question::whereNull('simulation_set_id');
+
+                if ($modul && $unitNumber !== null) {
+                    $query->where('modul', $modul)->where('unit_number', $unitNumber);
+                } elseif ($modul) {
+                    $query->where('modul', $modul);
+                }
+
+                $questions = $query->orderBy('modul')
+                    ->orderBy('unit_number')
                     ->orderByRaw("CASE WHEN order_number IS NULL THEN 999999 ELSE order_number END")
                     ->get();
 
-                return response()->json($quizQuestions);
+                Log::info('Admin/Instruktur quiz access granted', [
+                    'filter' => $modul ? ($unitNumber !== null ? "modul: {$modul}, unit: {$unitNumber}" : "modul: {$modul}") : 'all quiz questions',
+                    'total_questions' => $questions->count()
+                ]);
+
+                return response()->json([
+                    'filter' => $modul ? ($unitNumber !== null ? "modul: {$modul}, unit: {$unitNumber}" : "modul: {$modul}") : 'all quiz questions',
+                    'total_questions' => $questions->count(),
+                    'questions' => $questions
+                ]);
             }
-            
-            // Peserta: Cek akses unit untuk quiz
+
+            // PESERTA: LOGIKA BARU - UNIT ACCESS = QUIZ ACCESS
             if ($user->role === 'peserta') {
-                // Validasi input
-                if (!$modul || !isset($unitNumber)) {
-                    return response()->json(['error' => 'modul and unit_number required'], 400);
-                }
-                
-                $unitAccessController = new UnitAccessController();
-                $accessRequest = new Request(['modul' => $modul, 'unit_number' => $unitNumber]);
-                $accessResponse = $unitAccessController->checkUnitAccess($accessRequest);
-                $accessData = $accessResponse->getData(true);
-                
-                if (!$accessData['can_access']) {
-                    return response()->json([
-                        'error' => 'Access denied to this unit',
-                        'message' => $accessData['message']
-                    ], 403);
-                }
-                
-                // Student bisa akses, ambil questions - TIDAK BERUBAH
-                $quizQuestions = Question::where('modul', $modul)
-                    ->where('unit_number', $unitNumber)
-                    ->whereNull('simulation_set_id')
-                    ->orderByRaw("CASE WHEN order_number IS NULL THEN 999999 ELSE order_number END")
-                    ->get();
 
-                return response()->json($quizQuestions);
+                // Cek apakah ada idPeserta
+                if (!isset($user->idPeserta) || !$user->idPeserta) {
+                    Log::warning('User peserta tidak memiliki idPeserta', ['user' => $user]);
+
+                    // FALLBACK: Berikan akses minimal unit 0-1 untuk testing
+                    $allowedUnits = [0, 1];
+                    $query = Question::whereNull('simulation_set_id');
+
+                    if ($modul && $unitNumber !== null) {
+                        if (!in_array($unitNumber, $allowedUnits)) {
+                            return response()->json([
+                                'error' => 'Access denied to this unit',
+                                'message' => "Unit {$unitNumber} tidak dapat diakses (no idPeserta)",
+                                'allowed_units' => $allowedUnits
+                            ], 403);
+                        }
+                        $query->where('modul', $modul)->where('unit_number', $unitNumber);
+                    } elseif ($modul) {
+                        $query->where('modul', $modul)->whereIn('unit_number', $allowedUnits);
+                    } else {
+                        $query->whereIn('unit_number', $allowedUnits);
+                    }
+
+                    $questions = $query->orderBy('modul')
+                        ->orderBy('unit_number')
+                        ->orderByRaw("CASE WHEN order_number IS NULL THEN 999999 ELSE order_number END")
+                        ->get();
+
+                    return response()->json([
+                        'filter' => 'fallback access (no idPeserta)',
+                        'allowed_units' => $allowedUnits,
+                        'total_questions' => $questions->count(),
+                        'warning' => 'User peserta tidak memiliki idPeserta, menggunakan akses fallback',
+                        'questions' => $questions
+                    ]);
+                }
+
+                // LOGIKA UTAMA: CEK UNIT ACCESS DULU
+                try {
+                    $unitAccessController = new UnitAccessController();
+                    $unlockedRequest = new Request();
+                    $unlockedResponse = $unitAccessController->getUnlockedUnits($unlockedRequest);
+                    $unlockedData = $unlockedResponse->getData(true);
+
+                    Log::info('UnitAccess response', ['data' => $unlockedData]);
+
+                    // FINAL UNLOCKED UNITS dari rencana belajar + paket
+                    $finalUnlockedUnits = $unlockedData['final_unlocked_units'] ?? $unlockedData['unlocked_units'] ?? [];
+
+                    // QUERY BERDASARKAN UNIT ACCESS
+                    $query = Question::whereNull('simulation_set_id');
+
+                    if ($modul && $unitNumber !== null) {
+                        // Cek akses specific unit
+                        $modulUnits = $finalUnlockedUnits[$modul] ?? [];
+                        
+                        if (!in_array($unitNumber, $modulUnits)) {
+                            Log::info('Unit access denied', [
+                                'modul' => $modul,
+                                'unit_number' => $unitNumber,
+                                'unlocked_units' => $modulUnits,
+                                'reason' => 'Unit not in unlocked list from learning plan or package'
+                            ]);
+
+                            return response()->json([
+                                'error' => 'Access denied to this unit',
+                                'message' => "Unit {$unitNumber} pada modul {$modul} belum dapat diakses",
+                                'unlocked_units' => $modulUnits,
+                                'access_info' => $unlockedData['breakdown'] ?? null
+                            ], 403);
+                        }
+
+                        // UNIT BISA DIAKSES = QUIZ BISA DIAKSES
+                        $query->where('modul', $modul)->where('unit_number', $unitNumber);
+
+                        Log::info('Unit quiz access granted', [
+                            'modul' => $modul,
+                            'unit_number' => $unitNumber,
+                            'access_source' => 'learning plan or package'
+                        ]);
+
+                    } elseif ($modul) {
+                        // Filter by modul dan unlocked units
+                        $modulUnits = $finalUnlockedUnits[$modul] ?? [];
+                        if (empty($modulUnits)) {
+                            return response()->json([
+                                'filter' => "modul: {$modul} (no access)",
+                                'unlocked_units' => [],
+                                'questions' => []
+                            ]);
+                        }
+                        $query->where('modul', $modul)->whereIn('unit_number', $modulUnits);
+                        
+                    } else {
+                        // Semua quiz yang accessible berdasarkan unit access
+                        $accessibleQuestions = collect();
+
+                        foreach ($finalUnlockedUnits as $modulName => $units) {
+                            if (!empty($units)) {
+                                $modulQuestions = Question::where('modul', $modulName)
+                                    ->whereIn('unit_number', $units)
+                                    ->whereNull('simulation_set_id')
+                                    ->orderByRaw("CASE WHEN order_number IS NULL THEN 999999 ELSE order_number END")
+                                    ->get();
+
+                                $accessibleQuestions = $accessibleQuestions->merge($modulQuestions);
+                            }
+                        }
+
+                        Log::info('All accessible quiz questions', [
+                            'total_questions' => $accessibleQuestions->count(),
+                            'unlocked_units' => $finalUnlockedUnits
+                        ]);
+
+                        return response()->json([
+                            'filter' => 'all accessible quiz questions',
+                            'unlocked_units' => $finalUnlockedUnits,
+                            'total_questions' => $accessibleQuestions->count(),
+                            'questions' => $accessibleQuestions->values()
+                        ]);
+                    }
+
+                    $questions = $query->orderBy('modul')
+                        ->orderBy('unit_number')
+                        ->orderByRaw("CASE WHEN order_number IS NULL THEN 999999 ELSE order_number END")
+                        ->get();
+
+                    Log::info('Quiz questions retrieved', [
+                        'filter' => $modul ? ($unitNumber !== null ? "modul: {$modul}, unit: {$unitNumber}" : "modul: {$modul}") : 'accessible quiz questions',
+                        'total_questions' => $questions->count(),
+                        'unlocked_units' => $finalUnlockedUnits
+                    ]);
+
+                    return response()->json([
+                        'filter' => $modul ? ($unitNumber !== null ? "modul: {$modul}, unit: {$unitNumber}" : "modul: {$modul}") : 'accessible quiz questions',
+                        'unlocked_units' => $finalUnlockedUnits,
+                        'total_questions' => $questions->count(),
+                        'questions' => $questions
+                    ]);
+
+                } catch (\Exception $e) {
+                    Log::error('UnitAccessController failed', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+
+                    // FALLBACK: Error di UnitAccess, berikan akses minimal
+                    $allowedUnits = [0, 1];
+                    $query = Question::whereNull('simulation_set_id');
+
+                    if ($modul && $unitNumber !== null) {
+                        if (!in_array($unitNumber, $allowedUnits)) {
+                            return response()->json([
+                                'error' => 'Access denied to this unit',
+                                'message' => "Unit {$unitNumber} tidak dapat diakses (unit access error)",
+                                'allowed_units' => $allowedUnits
+                            ], 403);
+                        }
+                        $query->where('modul', $modul)->where('unit_number', $unitNumber);
+                    } elseif ($modul) {
+                        $query->where('modul', $modul)->whereIn('unit_number', $allowedUnits);
+                    } else {
+                        $query->whereIn('unit_number', $allowedUnits);
+                    }
+
+                    $questions = $query->orderBy('modul')
+                        ->orderBy('unit_number')
+                        ->orderByRaw("CASE WHEN order_number IS NULL THEN 999999 ELSE order_number END")
+                        ->get();
+
+                    return response()->json([
+                        'filter' => 'fallback access (unit access error)',
+                        'allowed_units' => $allowedUnits,
+                        'total_questions' => $questions->count(),
+                        'error_details' => 'UnitAccessController error, using fallback',
+                        'questions' => $questions
+                    ]);
+                }
             }
 
-            // Fallback - TIDAK BERUBAH
-            $quizQuestions = Question::where('modul', $request->modul)
-                ->where('unit_number', $request->unit_number)
-                ->whereNull('simulation_set_id')
-                ->orderByRaw("CASE WHEN order_number IS NULL THEN 999999 ELSE order_number END")
-                ->get();
+            return response()->json(['error' => 'Invalid role'], 403);
 
-            return response()->json($quizQuestions);
-        } catch (Exception $e) {
-            Log::error('Error fetching questions: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('QuestionController index failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json(['error' => 'Failed to fetch questions'], 500);
         }
     }
@@ -107,7 +275,7 @@ class QuestionController extends Controller
             ->whereNull('simulation_set_id')
             ->whereNotNull('order_number')
             ->max('order_number');
-        
+
         return ($maxOrder ?? 0) + 1;
     }
 

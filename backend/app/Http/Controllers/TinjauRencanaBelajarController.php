@@ -31,7 +31,7 @@ class TinjauRencanaBelajarController extends Controller
             return [
                 'id' => $item->idPengajuanRencanaBelajar,
                 'tglPengajuan' => $item->tglPengajuan,
-                'nama_peserta' => $item->peserta->pengguna->namaLengkap,
+                'nama_peserta' => $item->peserta->namaLengkap,
                 'email_peserta' => $item->peserta->pengguna->email,
                 'status' => $item->status
             ];
