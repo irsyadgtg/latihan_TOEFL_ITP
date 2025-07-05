@@ -83,18 +83,21 @@ class AuthController extends Controller
     {
         $user = Pengguna::find($request->route('id'));
 
+        // Jika link tidak valid atau sudah expired
         if (!$request->hasValidSignature()) {
-            return response()->json(['message' => 'Link verifikasi kadaluarsa atau tidak valid.'], 403);
+            return redirect()->away(config('app.frontend_url') . '/verifikasi-link?expired=true');
         }
 
+        // Jika sudah terverifikasi sebelumnya
         if ($user->email_verified_at) {
-            return response()->json(['message' => 'Email sudah diverifikasi sebelumnya.'], 200);
+            return redirect()->away(config('app.frontend_url') . '/login?verified=already');
         }
 
+        // Verifikasi sekarang
         $user->email_verified_at = now();
         $user->save();
 
-        return response()->json(['message' => 'Email berhasil diverifikasi. Silakan login.'], 200);
+        return redirect()->away(config('app.frontend_url') . '/login?verified=success');
     }
 
     public function resendVerification(Request $request)
