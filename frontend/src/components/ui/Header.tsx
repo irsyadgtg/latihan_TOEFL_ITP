@@ -13,10 +13,9 @@ interface HeaderProps {
     title: string;
     note: string;
     unreadCount: number; // Tambahkan prop ini
-    refreshUnreadNotifications: () => void; // Tambahkan prop ini
 }
 
-export default function Header({ title, note, unreadCount, refreshUnreadNotifications }: HeaderProps) { // Destrukturisasi prop baru
+export default function Header({ title, note, unreadCount }: HeaderProps) { // Destrukturisasi prop baru
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
