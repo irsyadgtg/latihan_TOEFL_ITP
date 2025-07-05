@@ -85,7 +85,7 @@ class AuthController extends Controller
 
         // Jika link tidak valid atau sudah expired
         if (!$request->hasValidSignature()) {
-            return redirect()->away(config('app.frontend_url') . '/verifikasi-link?expired=true');
+            return redirect()->away(config('app.frontend_url') . '/verifikasi-link?expired=true&email=' . urlencode($user->email));
         }
 
         // Jika sudah terverifikasi sebelumnya
