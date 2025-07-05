@@ -30,7 +30,9 @@ class KelolaProfilPesertaController extends Controller
             'nik' => $peserta->nik,
             'nomorTelepon' => $peserta->nomorTelepon ?? null,
             'paketKursus' => optional($paketSaatIni->paket)->namaPaket,
-            'sisaMasaBerlaku' => $paketSaatIni ? now()->diffInDays(optional($paketSaatIni->tglBerakhir)) : null,
+            'sisaMasaBerlaku' => $paketSaatIni && $paketSaatIni->tglBerakhir 
+            ? now()->diffInDays($paketSaatIni->tglBerakhir) 
+            : null,
             'alamat' => $peserta->alamat ?? null,
             'urlFotoProfil' => $peserta->urlFotoProfil ?? null,
         ]);
