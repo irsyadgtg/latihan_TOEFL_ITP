@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from "react";
 import AuthLayout from "../../layouts/AuthLayout";
-import axios from "axios"; // Import axios untuk type checking AxiosError
-import axiosInstance from "../../services/axios"; // Pastikan path ini benar!
+import axios, { AxiosError } from "axios";
+import axiosInstance from "../../services/axios";
+import { useNavigate, useParams } from "react-router-dom"; // Import useParams
 
 const VerificationLinkPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null); // State untuk menyimpan email pengguna
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { id, hash } = useParams<{ id?: string; hash?: string }>(); // Ambil ID dan Hash dari URL
 
   // Ambil email pengguna dari localStorage saat komponen dimuat
   useEffect(() => {
@@ -15,11 +18,9 @@ const VerificationLinkPage: React.FC = () => {
     if (userDataString) {
       try {
         const userData = JSON.parse(userDataString);
-        // Asumsi email pengguna tersimpan di userData.email
         if (userData.email) {
           setUserEmail(userData.email);
         } else {
-          // Jika email tidak ditemukan di data lokal, tampilkan error
           setError("Email pengguna tidak ditemukan di data lokal. Silakan login atau daftar ulang.");
         }
       } catch (e) {
@@ -27,55 +28,104 @@ const VerificationLinkPage: React.FC = () => {
         setError("Terjadi kesalahan saat memuat data pengguna. Silakan coba lagi.");
       }
     } else {
-      // Jika tidak ada data pengguna di localStorage
       setError("Data pengguna tidak ditemukan di penyimpanan lokal. Silakan login atau daftar.");
+      // Optional: Redirect to login page if no user data
+      // navigate('/login'); 
     }
   }, []);
 
-  // Fungsi untuk menangani klik tombol "Kirim Link Verifikasi"
-  const handleClickVerification = async () => {
+  // Efek untuk menangani verifikasi email jika ID dan Hash ada di URL
+  useEffect(() => {
+    if (id && hash) {
+      handleVerifyEmailFromLink(id, hash);
+    }
+  }, [id, hash]); // Jalankan efek ini ketika ID atau Hash berubah di URL
+
+  // Fungsi untuk memproses verifikasi email dari link (GET request)
+  const handleVerifyEmailFromLink = async (userId: string, userHash: string) => {
     setIsLoading(true);
     setMessage(null);
     setError(null);
 
-    // Jika email pengguna tidak ditemukan di localStorage, tidak bisa melanjutkan
+    try {
+      // Memanggil endpoint verifikasi Laravel dengan ID dan Hash dari URL
+      // Penting: Laravel secara default menggunakan middleware 'signed' untuk rute ini.
+      // Pastikan URL yang diakses oleh frontend memiliki parameter signature yang valid
+      // jika Anda memang mengarahkan link email langsung ke halaman frontend ini.
+      // Jika tidak, Laravel akan mengembalikan 403 Forbidden.
+      const response = await axiosInstance.get(`/email/verify/${userId}/${userHash}`);
+
+      setMessage(response.data.message || "Email Anda berhasil diverifikasi! Anda akan diarahkan ke halaman login.");
+      setError(null);
+      // Optional: Redirect ke halaman login setelah verifikasi sukses
+      setTimeout(() => {
+        navigate('/login');
+      }, 3000); // Redirect setelah 3 detik
+
+    } catch (err) {
+      console.error('Gagal memverifikasi email dari link:', err);
+      if (axios.isAxiosError(err) && err.response) {
+        if (err.response.status === 403) {
+          setError("Link verifikasi tidak valid atau sudah kadaluarsa. Silakan minta link baru.");
+        } else if (err.response.data && err.response.data.message) {
+          setError(err.response.data.message);
+        } else {
+          setError(`Terjadi kesalahan: ${err.response.status} ${err.response.statusText || 'Error'}.`);
+        }
+      } else {
+        setError("Tidak dapat terhubung ke server. Silakan coba lagi nanti.");
+      }
+      setMessage(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fungsi untuk menangani klik tombol "Kirim Ulang Link Verifikasi" (POST request)
+  const handleResendVerificationLink = async () => {
+    setIsLoading(true);
+    setMessage(null);
+    setError(null);
+
     if (!userEmail) {
-      setError("Email pengguna tidak tersedia untuk memicu verifikasi.");
+      setError("Email pengguna tidak tersedia untuk mengirim ulang verifikasi.");
       setIsLoading(false);
       return;
     }
 
     try {
-      // *** PENTING: Memanggil GET /email/verify. Ini mungkin tidak memberikan hasil yang diinginkan ***
-      // Endpoint ini memerlukan ID pengguna di path (misal: /email/verify/123) dan signed URL parameters.
-      // Memanggilnya tanpa itu kemungkinan besar akan menghasilkan 404 Not Found atau 403 Forbidden.
-      // Endpoint yang benar untuk MENGIRIM ULANG link adalah POST /email/resend.
-      // Di sini, kita hanya mencoba memicu verifikasi ulang jika backend diatur untuk menangani GET tanpa parameter lengkap atau merespons secara spesifik.
+      const response = await axiosInstance.post('/email/resend', { email: userEmail });
 
-      // Asumsi: Laravel akan mengenali ini sebagai permintaan verifikasi dan mungkin merespons dengan pesan.
-      // Perhatikan bahwa Anda TIDAK mengirim email di sini, hanya mencoba memicu endpoint verifikasi.
-      const response = await axiosInstance.get('/email/verify', { params: { email: userEmail } }); // Mengirim email sebagai query param
+      setMessage(response.data.message || "Link verifikasi baru telah dikirim ke email Anda. Silakan cek kotak masuk.");
+      setError(null);
 
-      setMessage(response.data.message || "Permintaan verifikasi telah diproses. Silakan cek email Anda.");
-      setError(null); // Hapus error jika sukses
-      
     } catch (err) {
-      console.error('Gagal memicu verifikasi ulang:', err);
+      console.error('Gagal mengirim ulang link verifikasi:', err);
       if (axios.isAxiosError(err) && err.response) {
-        // Jika backend mengirim pesan error
-        // Misalnya, 404 (jika rute /email/verify tanpa ID tidak ada) atau 403 (validasi signature gagal)
-        setError(err.response.data.message || `Terjadi kesalahan: ${err.response.status}. Pastikan URL verifikasi valid atau minta link baru.`);
-        if (err.response.status === 422 && err.response.data.errors) {
-            const validationErrors = Object.values(err.response.data.errors).flat().join(' ');
-            setError(`Validasi Gagal: ${validationErrors}`);
+        if (err.response.status === 429) {
+          setError("Terlalu banyak percobaan. Harap tunggu sebentar sebelum mencoba lagi.");
+        } else if (err.response.data && err.response.data.message) {
+          setError(err.response.data.message);
+        } else {
+          setError(`Terjadi kesalahan: ${err.response.status} ${err.response.statusText || 'Error'}.`);
         }
       } else {
         setError("Tidak dapat terhubung ke server. Silakan coba lagi nanti.");
       }
-      setMessage(null); // Hapus pesan sukses jika ada error
+      setMessage(null);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Fungsi untuk mengarahkan ke halaman login
+  const handleGoToLogin = () => {
+    navigate('/login');
+  };
+
+  // Fungsi untuk mengarahkan ke halaman pendaftaran
+  const handleGoToRegister = () => {
+    navigate('/register');
   };
 
   return (
@@ -84,35 +134,46 @@ const VerificationLinkPage: React.FC = () => {
         <h2 className="text-3xl font-bold tracking-tight text-gray-900">
           Verifikasi Email Anda
         </h2>
-        <p className="mt-2 text-sm text-gray-600">
-          Link verifikasi Anda mungkin sudah kadaluarsa atau Anda belum memverifikasi email Anda.
-          Klik tombol di bawah untuk memicu proses verifikasi (jika email Anda dikenali).
-        </p>
-        {userEmail && (
+        {/* Tampilkan pesan sesuai skenario */}
+        {id && hash ? (
+          <p className="mt-2 text-sm text-gray-600">
+            Memverifikasi email Anda... Mohon tunggu.
+          </p>
+        ) : (
+          <p className="mt-2 text-sm text-gray-600">
+            Link verifikasi Anda mungkin sudah kadaluarsa atau Anda belum memverifikasi email Anda.
+            Klik tombol di bawah untuk meminta pengiriman ulang link verifikasi.
+          </p>
+        )}
+        
+        {userEmail && !id && !hash && ( // Tampilkan email terdaftar hanya jika bukan dari link verifikasi
           <p className="mt-1 text-sm text-gray-500">
-            (Email terdaftar: {userEmail})
+            (Email Anda: <span className="font-semibold">{userEmail}</span>)
           </p>
         )}
       </div>
 
-      <div className="mt-8">
-        <button
-          type="button" 
-          onClick={handleClickVerification} // Mengganti nama fungsi
-          disabled={isLoading || !userEmail} 
-          className="flex w-full justify-center rounded-md border border-transparent bg-[#E5A923] py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
-        >
-          {isLoading ? "Memproses..." : "Kirim Link Verifikasi"} {/* Mengganti teks tombol */}
-        </button>
+      <div className="mt-8 space-y-4">
+        {/* Tampilkan tombol kirim ulang hanya jika tidak ada ID dan Hash di URL */}
+        {!id && !hash && (
+          <button
+            type="button"
+            onClick={handleResendVerificationLink}
+            disabled={isLoading || !userEmail}
+            className="flex w-full justify-center rounded-md border border-transparent bg-[#E5A923] py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+          >
+            {isLoading ? "Mengirim Ulang Link..." : "Kirim Ulang Link Verifikasi"}
+          </button>
+        )}
 
         {message && (
-          <p className="mt-4 text-sm text-center text-green-600 bg-green-100 p-3 rounded-md">
+          <p className="text-sm text-center text-green-600 bg-green-100 p-3 rounded-md">
             {message}
           </p>
         )}
 
         {error && (
-          <p className="mt-4 text-sm text-center text-red-600 bg-red-100 p-3 rounded-md">
+          <p className="text-sm text-center text-red-600 bg-red-100 p-3 rounded-md">
             {error}
           </p>
         )}
