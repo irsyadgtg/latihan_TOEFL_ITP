@@ -74,11 +74,11 @@ Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logo
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
-Route::get('/reset-password/{token}', function ($token) {
-    return response()->json([
-        'message' => 'Ini halaman reset password (dummy). Token: ' . $token
-    ]);
-})->name('password.reset');
+// Route::get('/reset-password/{token}', function ($token) {
+//     return response()->json([
+//         'message' => 'Ini halaman reset password (dummy). Token: ' . $token
+//     ]);
+// })->name('password.reset');
 
 Route::middleware(['auth:sanctum'])->group(function () {
     //Kelola Instruktur

@@ -1,4 +1,4 @@
-import { useEffect } from "react"; // Import useEffect
+import { useEffect, useState } from "react"; // Import useEffect
 import img1 from "../../assets/image/Kelola-Paket-Kursus/image 25.png";
 import { useDashboardLayoutContext } from '../../layouts/DashboardLayout'; // Import context DashboardLayout
 
@@ -13,6 +13,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import axiosInstance from "../../../src/services/axios";
+import { useNavigate } from "react-router-dom";
 
 
 // data untuk grafik bar
@@ -48,22 +50,66 @@ export default function Dashboard() {
     setTitle("Dashboard Admin"); // Judul untuk Dashboard
     setSubtitle("Ringkasan data sistem dan performa."); // Subjudul untuk Dashboard
     
-    // Opsional: Cleanup function jika Anda ingin mengatur ulang judul saat komponen unmount
-    // return () => {
-    //   setTitle(""); 
-    //   setSubtitle("");
-    // };
   }, [setTitle, setSubtitle]); // Pastikan dependensi dimasukkan
+
+  const navigate = useNavigate()
+
+  const [dashboardData, setDashboardData] = useState({
+    "totalUserPerRole": {
+        "peserta": 0,
+        "instruktur": 0,
+        "admin": 0
+    },
+    "totalPesertaPerPaket": [],
+    "pertumbuhanPeserta": [
+        {
+            "tahun": 0,
+            "bulan": 0,
+            "total": 0
+        },
+        {
+            "tahun": 0,
+            "bulan": 0,
+            "total": 0
+        }
+    ]
+})
+  function fetchDashboard(){
+        axiosInstance.get('/admin/dashboard-admin')
+        .then(response=>{
+
+        setDashboardData(response.data)
+
+        })
+        .catch(error=>{
+          console.log(error.response.data.message)
+        if (error.response.data.message === 'Unauthenticated.'){
+
+          navigate('/admin/login')
+        }
+
+        })
+    }
+    useEffect(()=>{
+        fetchDashboard()
+
+    }, [])
+
+      console.log(dashboardData)
 
   return (
     <div className="space-y-8 mt-4"> {/* Tambahkan mt-4 jika perlu margin atas */}
       {/* Statistik Pengguna */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { label: "Admin", total: 1 },
-          { label: "Peserta Kursus", total: 200 },
-          { label: "Instruktur", total: 10 },
+
+          { label: "Admin", total: dashboardData?.totalUserPerRole?.admin || 0},
+          { label: "Peserta Kursus", total: dashboardData?.totalUserPerRole?.peserta || 0},
+          { label: "Instruktur", total: dashboardData?.totalUserPerRole?.instruktur || 0},
+          
+
         ].map((item, index) => (
+
           <div
             key={index}
             className={`border border-borderColor p-12 rounded-xl flex items-center gap-3 ${

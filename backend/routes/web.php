@@ -22,9 +22,8 @@ Route::get('/', function () {
 Route::get('/email/verify/{id}', [AuthController::class, 'verify'])->name('verification.verify');
 
 //Kirim token lupa password
-Route::get('/reset-password/{token}', function (Illuminate\Http\Request $request, $token) {
-    $email = $request->query('email');
-    
-    // Redirect ke frontend React
-    return redirect('http://localhost:3000/forgot-password?token=' . $token . '&email=' . urlencode($email));
-})->name('password.reset');
+// Route::get('/reset-password/{token}', function ($token) {
+//     return response()->json([
+//         'message' => 'Ini halaman reset password (dummy). Token: '.$token
+//     ]);
+// })->name('password.reset');

@@ -12,6 +12,13 @@ class PesertaPaketKursus extends Model
     protected $table = 'peserta_paket_kursus';
     protected $primaryKey = 'idPesertaPaketKursus';
 
+    protected $casts = [
+    'tglMulai' => 'datetime',
+    'tglBerakhir' => 'datetime',
+    'statusAktif' => 'boolean',
+    'paketSaatIni' => 'boolean',
+    ];
+
     protected $fillable = [
         'tglMulai',
         'tglBerakhir',

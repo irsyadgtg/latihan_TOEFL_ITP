@@ -4,6 +4,7 @@ namespace App\Providers;
 
 // use Illuminate\Support\Facades\Gate;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Auth\Notifications\ResetPassword;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -23,6 +24,9 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        //
+        // Ubah URL reset password ke halaman frontend
+        ResetPassword::createUrlUsing(function ($notifiable, $token) {
+            return "http://localhost:5174/reset-password?token=$token&email={$notifiable->getEmailForPasswordReset()}";
+        });
     }
 }

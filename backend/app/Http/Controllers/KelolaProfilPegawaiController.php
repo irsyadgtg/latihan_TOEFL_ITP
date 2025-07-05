@@ -40,10 +40,15 @@ class KelolaProfilPegawaiController extends Controller
         $user = Auth::user();
 
         $pengguna = Pengguna::with('pegawai')->find($user->idPengguna);
-        $pegawai = $pengguna->pegawai;
 
         if (!$pengguna) {
             return response()->json(['message' => 'Profil tidak ditemukan.'], 404);
+        }
+
+        $pegawai = $pengguna->pegawai;
+
+        if (!$pegawai) {
+            return response()->json(['message' => 'Data pegawai tidak ditemukan.'], 404);
         }
 
         $validator = Validator::make($request->all(), [
@@ -75,7 +80,7 @@ class KelolaProfilPegawaiController extends Controller
             'nomorTelepon' => $request->nomorTelepon,
             'nik_nip' => $request->nik_nip,
             'alamat' => $request->alamat,
-            'urlFotoProfil' => $pathFoto,
+            'urlFotoProfil' => $pathFoto ?? $pegawai->urlFotoProfil,
         ]);
 
 
@@ -94,6 +99,14 @@ class KelolaProfilPegawaiController extends Controller
         }
 
         $pegawai = $pengguna->pegawai;
+
+        if (!$pegawai) {
+            return response()->json(['message' => 'Data pegawai tidak ditemukan.'], 404);
+        }
+
+        if (!$pegawai || !$pegawai->instruktur) {
+            return response()->json(['message' => 'Data instruktur tidak ditemukan.'], 404);
+        }
         $instruktur = $pegawai->instruktur;
 
         return response()->json([
@@ -151,7 +164,7 @@ class KelolaProfilPegawaiController extends Controller
             'nik_nip' => $request->nik_nip,
             'nomorTelepon' => $request->nomorTelepon,
             'alamat' => $request->alamat,
-            'urlFotoProfil' => $pathFoto,
+            'urlFotoProfil' => $pathFoto ?? $pegawai->urlFotoProfil,
         ]);
 
         return response()->json(['message' => 'Profil instruktur berhasil diperbarui.']);
