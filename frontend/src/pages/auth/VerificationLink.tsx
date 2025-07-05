@@ -2,15 +2,16 @@ import React, { useState, useEffect } from "react";
 import AuthLayout from "../../layouts/AuthLayout";
 import axios, { AxiosError } from "axios";
 import axiosInstance from "../../services/axios";
-import { useNavigate, useParams } from "react-router-dom"; // Import useParams
+import { useNavigate, useLocation, useParams } from "react-router-dom"; // Import useParams dan useLocation
 
-const VerificationLinkPage: React.FC = () => {
+const EmailVerificationPage: React.FC = () => { // Nama komponen diubah
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { id, hash } = useParams<{ id?: string; hash?: string }>(); // Ambil ID dan Hash dari URL
+  const location = useLocation(); // Untuk membaca query parameters dari URL
+  const { id } = useParams<{ id?: string }>(); // Hanya ambil 'id' dari URL path
 
   // Ambil email pengguna dari localStorage saat komponen dimuat
   useEffect(() => {
@@ -29,48 +30,62 @@ const VerificationLinkPage: React.FC = () => {
       }
     } else {
       setError("Data pengguna tidak ditemukan di penyimpanan lokal. Silakan login atau daftar.");
-      // Optional: Redirect to login page if no user data
+      // Jika tidak ada data user, mungkin arahkan ke login atau register
       // navigate('/login'); 
     }
   }, []);
 
-  // Efek untuk menangani verifikasi email jika ID dan Hash ada di URL
+  // Efek untuk menangani verifikasi email jika ID ada di URL (saat user mengklik link email)
   useEffect(() => {
-    if (id && hash) {
-      handleVerifyEmailFromLink(id, hash);
+    // Hanya proses ini jika ID ada di path URL saat halaman ini dimuat
+    // dan belum ada error atau message dari query params lain
+    const queryParams = new URLSearchParams(location.search);
+    const existingMessage = queryParams.get('message');
+    const existingStatus = queryParams.get('status');
+
+    if (id && !existingMessage) { // Hanya panggil jika ada ID di path dan belum ada pesan dari redirect Laravel
+      handleVerifyEmailFromLink(id);
+    } else if (existingMessage && existingStatus === 'error') {
+      setError(existingMessage); // Set error dari Laravel redirect
+    } else if (existingMessage && existingStatus === 'warning') {
+      setMessage(existingMessage); // Set warning/info dari Laravel redirect
     }
-  }, [id, hash]); // Jalankan efek ini ketika ID atau Hash berubah di URL
+    // Jika statusnya 'success', Laravel seharusnya sudah redirect ke /reset-password
+  }, [id, location.search]); // Jalankan efek ini ketika ID atau query params berubah
 
   // Fungsi untuk memproses verifikasi email dari link (GET request)
-  const handleVerifyEmailFromLink = async (userId: string, userHash: string) => {
+  // Ini akan dipicu jika pengguna langsung mengakses URL seperti /verifikasi-email/123
+  const handleVerifyEmailFromLink = async (userId: string) => {
     setIsLoading(true);
     setMessage(null);
     setError(null);
 
     try {
-      // Memanggil endpoint verifikasi Laravel dengan ID dan Hash dari URL
-      // Penting: Laravel secara default menggunakan middleware 'signed' untuk rute ini.
-      // Pastikan URL yang diakses oleh frontend memiliki parameter signature yang valid
-      // jika Anda memang mengarahkan link email langsung ke halaman frontend ini.
-      // Jika tidak, Laravel akan mengembalikan 403 Forbidden.
-      const response = await axiosInstance.get(`/email/verify/${userId}/${userHash}`);
+      // Memanggil endpoint verifikasi Laravel dengan ID dari URL.
+      // Laravel akan memvalidasi signature dari query params (expires, signature)
+      const response = await axiosInstance.get(`/email/verify/${userId}`);
 
-      setMessage(response.data.message || "Email Anda berhasil diverifikasi! Anda akan diarahkan ke halaman login.");
-      setError(null);
-      // Optional: Redirect ke halaman login setelah verifikasi sukses
+      // Ini bagian yang jarang terjadi: Laravel biasanya akan REDIRECT
+      // Tapi jika Laravel somehow mengirimkan JSON (mungkin karena interceptor atau header accept)
+      // maka tangani respon di sini.
+      setMessage(response.data.message || "Email Anda berhasil diverifikasi! Anda akan diarahkan.");
+      setError(null); 
+      // Jika berhasil, redirect ke login atau reset-password, sesuai alur
       setTimeout(() => {
-        navigate('/login');
-      }, 3000); // Redirect setelah 3 detik
+        // Asumsi Laravel sudah melakukan redirect ke /reset-password atau /login
+        // Jika tidak, Anda bisa tambahkan redirect manual di sini:
+        // navigate('/login?message=Verifikasi berhasil. Silakan login.');
+      }, 3000); 
 
     } catch (err) {
       console.error('Gagal memverifikasi email dari link:', err);
       if (axios.isAxiosError(err) && err.response) {
-        if (err.response.status === 403) {
-          setError("Link verifikasi tidak valid atau sudah kadaluarsa. Silakan minta link baru.");
-        } else if (err.response.data && err.response.data.message) {
-          setError(err.response.data.message);
-        } else {
-          setError(`Terjadi kesalahan: ${err.response.status} ${err.response.statusText || 'Error'}.`);
+        // Pesan error langsung dari Laravel API jika Laravel tidak redirect
+        // Ini mungkin terjadi jika ada error validasi CORS atau error lain yang mencegah redirect
+        setError(err.response.data.message || `Terjadi kesalahan: ${err.response.status} ${err.response.statusText || 'Error'}.`);
+        if (err.response.status === 422 && err.response.data.errors) {
+            const validationErrors = Object.values(err.response.data.errors).flat().join(' ');
+            setError(`Validasi Gagal: ${validationErrors}`);
         }
       } else {
         setError("Tidak dapat terhubung ke server. Silakan coba lagi nanti.");
@@ -96,18 +111,22 @@ const VerificationLinkPage: React.FC = () => {
     try {
       const response = await axiosInstance.post('/email/resend', { email: userEmail });
 
+      // Gunakan pesan dan status dari Laravel
       setMessage(response.data.message || "Link verifikasi baru telah dikirim ke email Anda. Silakan cek kotak masuk.");
-      setError(null);
+      setError(null); // Hapus error jika sukses
+      // Tambahkan efek visual (misal: tombol disable sementara)
 
     } catch (err) {
       console.error('Gagal mengirim ulang link verifikasi:', err);
       if (axios.isAxiosError(err) && err.response) {
-        if (err.response.status === 429) {
-          setError("Terlalu banyak percobaan. Harap tunggu sebentar sebelum mencoba lagi.");
-        } else if (err.response.data && err.response.data.message) {
-          setError(err.response.data.message);
-        } else {
-          setError(`Terjadi kesalahan: ${err.response.status} ${err.response.statusText || 'Error'}.`);
+        setError(err.response.data.message || `Terjadi kesalahan: ${err.response.status} ${err.response.statusText || 'Error'}.`);
+        if (err.response.status === 422 && err.response.data.errors) {
+            const validationErrors = Object.values(err.response.data.errors).flat().join(' ');
+            setError(`Validasi Gagal: ${validationErrors}`);
+        } else if (err.response.status === 403) { // Contoh: jika user tidak valid
+            setError("Akses ditolak. Pastikan email Anda terdaftar.");
+        } else if (err.response.status === 404) { // Contoh: jika endpoint salah
+            setError("Endpoint pengiriman ulang tidak ditemukan. Silakan hubungi admin.");
         }
       } else {
         setError("Tidak dapat terhubung ke server. Silakan coba lagi nanti.");
@@ -118,35 +137,34 @@ const VerificationLinkPage: React.FC = () => {
     }
   };
 
-  // Fungsi untuk mengarahkan ke halaman login
-  const handleGoToLogin = () => {
-    navigate('/login');
-  };
-
-  // Fungsi untuk mengarahkan ke halaman pendaftaran
-  const handleGoToRegister = () => {
-    navigate('/register');
-  };
-
   return (
     <AuthLayout>
       <div className="mt-4 text-center">
         <h2 className="text-3xl font-bold tracking-tight text-gray-900">
           Verifikasi Email Anda
         </h2>
-        {/* Tampilkan pesan sesuai skenario */}
-        {id && hash ? (
-          <p className="mt-2 text-sm text-gray-600">
-            Memverifikasi email Anda... Mohon tunggu.
+        {/* Tampilkan pesan sesuai skenario dari query params atau default */}
+        {message && (
+          <p className="mt-2 text-sm text-green-600 bg-green-100 p-3 rounded-md">
+            {message}
           </p>
-        ) : (
-          <p className="mt-2 text-sm text-gray-600">
-            Link verifikasi Anda mungkin sudah kadaluarsa atau Anda belum memverifikasi email Anda.
-            Klik tombol di bawah untuk meminta pengiriman ulang link verifikasi.
+        )}
+        {error && (
+          <p className="mt-2 text-sm text-red-600 bg-red-100 p-3 rounded-md">
+            {error}
           </p>
         )}
         
-        {userEmail && !id && !hash && ( // Tampilkan email terdaftar hanya jika bukan dari link verifikasi
+        {!message && !error && ( // Tampilkan pesan default jika tidak ada pesan dari Laravel
+          <p className="mt-2 text-sm text-gray-600">
+            {id ? 
+              "Memverifikasi email Anda... Mohon tunggu." : 
+              "Link verifikasi Anda mungkin sudah kadaluarsa atau Anda belum memverifikasi email Anda. Klik tombol di bawah untuk meminta pengiriman ulang link verifikasi."
+            }
+          </p>
+        )}
+        
+        {userEmail && ( 
           <p className="mt-1 text-sm text-gray-500">
             (Email Anda: <span className="font-semibold">{userEmail}</span>)
           </p>
@@ -154,8 +172,8 @@ const VerificationLinkPage: React.FC = () => {
       </div>
 
       <div className="mt-8 space-y-4">
-        {/* Tampilkan tombol kirim ulang hanya jika tidak ada ID dan Hash di URL */}
-        {!id && !hash && (
+        {/* Tombol kirim ulang hanya ditampilkan jika tidak dalam proses verifikasi awal dari link */}
+        {!id && (
           <button
             type="button"
             onClick={handleResendVerificationLink}
@@ -166,20 +184,19 @@ const VerificationLinkPage: React.FC = () => {
           </button>
         )}
 
-        {message && (
-          <p className="text-sm text-center text-green-600 bg-green-100 p-3 rounded-md">
-            {message}
-          </p>
-        )}
-
+        {/* Tambahkan tombol untuk kembali ke Login jika verifikasi gagal atau user tidak ada */}
         {error && (
-          <p className="text-sm text-center text-red-600 bg-red-100 p-3 rounded-md">
-            {error}
-          </p>
+            <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="flex w-full justify-center rounded-md border border-transparent bg-gray-500 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            >
+                Kembali ke Login
+            </button>
         )}
       </div>
     </AuthLayout>
   );
 };
 
-export default VerificationLinkPage;
+export default EmailVerificationPage;
