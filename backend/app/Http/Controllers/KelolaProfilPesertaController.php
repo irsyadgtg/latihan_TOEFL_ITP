@@ -14,7 +14,7 @@ class KelolaProfilPesertaController extends Controller
     public function getProfilPeserta()
     {
         $user = Auth::user();
-        $pengguna = Pengguna::with('peserta.pesertaPaket.paketKursus')->find($user->idPengguna);
+        $pengguna = Pengguna::with('peserta.pesertaPaket.paket')->find($user->idPengguna);
         $paketSaatIni = $pengguna->peserta->pesertaPaket->where('paketSaatIni', true)->first();
 
         if (!$pengguna || !$pengguna->peserta) {
@@ -22,7 +22,6 @@ class KelolaProfilPesertaController extends Controller
         }
 
         $peserta = $pengguna->peserta;
-        $paket = $peserta->paketSaatIni;
 
         return response()->json([
             'namaLengkap' => $peserta->namaLengkap,
@@ -30,8 +29,10 @@ class KelolaProfilPesertaController extends Controller
             'email' => $pengguna->email,
             'nik' => $peserta->nik,
             'nomorTelepon' => $peserta->nomorTelepon ?? null,
-            'paketKursus' => $paketSaatIni ? $paketSaatIni->paketKursus->namaPaket : null,
-            'sisaMasaBerlaku' => $paketSaatIni ? now()->diffInDays(optional($paketSaatIni->tglBerakhir)) : null,
+            'paketKursus' => optional($paketSaatIni->paket)->namaPaket,
+            'sisaMasaBerlaku' => $paketSaatIni && $paketSaatIni->tglBerakhir 
+            ? now()->diffInDays($paketSaatIni->tglBerakhir) 
+            : null,
             'alamat' => $peserta->alamat ?? null,
             'urlFotoProfil' => $peserta->urlFotoProfil ?? null,
         ]);
@@ -49,6 +50,7 @@ class KelolaProfilPesertaController extends Controller
 
         $validator = Validator::make($request->all(), [
             'namaLengkap' => 'required|string|max:255',
+            'nik' => 'required|digits:16|unique:peserta_kursus,nik,' . $pengguna->peserta->idPeserta . ',idPeserta',
             'nomorTelepon' => 'nullable|string|max:20|regex:/^[\d\+\-\s]+$/',
             'alamat' => 'nullable|string',
             'foto' => 'nullable|file|image|mimes:jpeg,png,jpg|max:2048',
@@ -71,7 +73,7 @@ class KelolaProfilPesertaController extends Controller
             'nik' => $request->nik,
             'nomorTelepon' => $request->nomorTelepon,
             'alamat' => $request->alamat,
-            'urlFotoProfil' => $pathFoto,
+            'urlFotoProfil' => $pathFoto ?? $pengguna->peserta->urlFotoProfil
         ]);
 
         return response()->json(['message' => 'Profil peserta berhasil diperbarui.']);

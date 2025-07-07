@@ -1,261 +1,476 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, ChangeEvent } from "react";
 import { FaEdit } from "react-icons/fa";
 import { format } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
-import { useDashboardLayoutContext } from '../../layouts/DashboardLayout'; // Import context DashboardLayout
+import { id as idLocale } from 'date-fns/locale';
 
-export default function Profil() {
-  const [isEditing, setIsEditing] = useState(false);
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [date, setDate] = useState<Date | undefined>(
-    new Date('2025-04-18') // Inisialisasi tanggal default seperti di gambar (18/04/2025)
-  );
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+import { useDashboardLayoutContext } from '../../layouts/DashboardLayout';
+import axiosInstance from "../../services/axios";
+import axios, { AxiosError } from "axios";
+import { useNavigate } from "react-router-dom";
 
-  const [form, setForm] = useState({
-    fullName: "Khrsima", // Pastikan nilai ini ada saat inisialisasi
-    username: "khrsimamanang",
-    email: "khrsimamanang@gmail.com", // Menambahkan email dan idNumber
-    idNumber: "12077139102019",
-    address: "",
-    phone: "",
-    waktu: '08.00-16.00',
-    keahlian: 'Structure',
-  });
+// Definisikan interface untuk struktur data profil instruktur dari API
+interface InstructorProfileAPIResponse {
+    username: string;
+    email: string;
+    namaLengkap: string;
+    nik_nip: string;
+    nomorTelepon: string | null;
+    alamat: string | null;
+    keahlian: string;
+    waktuMulai: string;
+    waktuBerakhir: string;
+    tglKetersediaan: string;
+    urlFotoProfil?: string | null;
+}
 
-  // Ambil setter dari context DashboardLayout
-  const { setTitle, setSubtitle } = useDashboardLayoutContext();
+export default function ProfilInstruktur() {
+    const { setTitle, setSubtitle } = useDashboardLayoutContext();
+    const navigate = useNavigate();
 
-  useEffect(() => {
-    // Inisialisasi photoPreview jika belum ada foto yang di-upload
-    if (!photoPreview) {
-      setPhotoPreview("https://ui-avatars.com/api/?name=Khrsima&background=random");
+    const [isEditing, setIsEditing] = useState(false);
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+    const [profileData, setProfileData] = useState({
+        fullName: "",
+        username: "",
+        email: "",
+        idNumber: "",
+        address: "",
+        phone: "",
+        waktuMulai: "",
+        waktuBerakhir: "",
+        keahlian: "",
+    });
+
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+    useEffect(() => {
+        setTitle("Profil Saya");
+        setSubtitle("Isikan profil instruktur Anda");
+        fetchProfile();
+    }, [setTitle, setSubtitle, navigate]);
+
+    const fetchProfile = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await axiosInstance.get<InstructorProfileAPIResponse>('/profil/instruktur');
+            const data = response.data;
+
+            setProfileData({
+                fullName: data.namaLengkap || '',
+                username: data.username || '',
+                email: data.email || '',
+                idNumber: data.nik_nip || '',
+                address: data.alamat || '',
+                phone: data.nomorTelepon || '',
+                keahlian: data.keahlian || '',
+                waktuMulai: data.waktuMulai ? data.waktuMulai.substring(0, 5) : '',
+                waktuBerakhir: data.waktuBerakhir ? data.waktuBerakhir.substring(0, 5) : '',
+            });
+
+            console.log("[ProfilInstruktur] Data keahlian dari API:", data.keahlian); 
+            console.log("[ProfilInstruktur] Tipe data keahlian dari API:", typeof data.keahlian); 
+
+            if (data.tglKetersediaan) {
+                setSelectedDate(new Date(data.tglKetersediaan)); 
+            } else {
+                setSelectedDate(undefined);
+            }
+
+            setPhotoPreview(data.urlFotoProfil || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.namaLengkap || 'Instruktur')}&background=random`);
+
+        } catch (err) {
+            console.error("Failed to fetch instructor profile:", err);
+            if (axios.isAxiosError(err)) {
+                if (err.response) {
+                    if (err.response.status === 401) {
+                        setError("Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.");
+                        localStorage.removeItem('AuthToken');
+                        localStorage.removeItem('userData');
+                        navigate('/instruktur/login');
+                    } else if (err.response.status === 403) {
+                        setError("Anda tidak memiliki izin untuk melihat profil ini.");
+                    } else if (err.response.data && typeof err.response.data === 'object' && 'message' in err.response.data) {
+                        setError(err.response.data.message as string);
+                    } else {
+                        setError(`Terjadi kesalahan: ${err.response.status} ${err.response.statusText || 'Error'}`);
+                    }
+                } else if (err.code === 'ECONNABORTED' || err.message.includes('timeout')) {
+                    setError("Permintaan ke server gagal karena waktu habis. Mohon coba lagi, atau periksa koneksi Anda.");
+                    console.error("Timeout error:", err);
+                } else if (err.request) {
+                    setError("Tidak dapat terhubung ke server. Pastikan koneksi internet Anda aktif atau server sedang berjalan.");
+                } else {
+                    setError("Terjadi kesalahan saat mengatur permintaan. Silakan coba lagi.");
+                }
+            } else {
+                setError("Terjadi kesalahan tidak terduga.");
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setProfileData((prevData) => ({
+            ...prevData,
+            [name]: value,
+        }));
+    };
+
+    const handlePhotoChange = (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setPhotoFile(file);
+            setPhotoPreview(URL.createObjectURL(file));
+        }
+    };
+
+    const handleDateSelect = (date: Date | undefined) => {
+        setSelectedDate(date);
+        setIsCalendarOpen(false);
+    };
+
+    const handleEditToggle = async () => {
+        if (isEditing) {
+            setLoading(true);
+            setError(null);
+            setSuccessMessage(null);
+
+            const formData = new FormData();
+            // --- BARIS INI DIHAPUS SESUAI PERMINTAAN ANDA ---
+            // formData.append("_method", "PUT"); 
+            // ------------------------------------------------
+
+            if (profileData.fullName) formData.append("namaLengkap", profileData.fullName);
+            if (profileData.username) formData.append("username", profileData.username);
+            if (profileData.email) formData.append("email", profileData.email);
+            if (profileData.idNumber) formData.append("nik_nip", profileData.idNumber);
+            if (profileData.address) formData.append("alamat", profileData.address);
+            if (profileData.phone) formData.append("nomorTelepon", profileData.phone);
+            
+            if (profileData.waktuMulai) formData.append("waktu_mulai", profileData.waktuMulai + ':00');
+            if (profileData.waktuBerakhir) formData.append("waktu_berakhir", profileData.waktuBerakhir + ':00');
+            if (profileData.keahlian) formData.append("keahlian", profileData.keahlian); 
+            if (selectedDate) {
+                formData.append("tgl_ketersediaan", format(selectedDate, 'yyyy-MM-dd'));
+            }
+
+            if (photoFile) {
+                formData.append("foto", photoFile);
+            }
+
+            try {
+                // Sekarang ini akan mengirimkan POST request murni
+                const response = await axiosInstance.post('/profil/instruktur', formData); 
+                console.log("Instructor profile updated successfully:", response.data);
+                setSuccessMessage("Profil instruktur berhasil diperbarui!");
+                await fetchProfile(); 
+                setIsEditing(false);
+            } catch (err) {
+                console.error("Failed to update instructor profile:", err);
+                if (axios.isAxiosError(err)) {
+                    if (err.response) {
+                        if (err.response.status === 401) {
+                            setError("Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.");
+                            localStorage.removeItem('AuthToken');
+                            localStorage.removeItem('userData');
+                            navigate('/instruktur/login');
+                        } else if (err.response.status === 403) {
+                            setError("Anda tidak memiliki izin untuk memperbarui profil ini.");
+                        } else if (err.response.data && typeof err.response.data === 'object' && 'message' in err.response.data) {
+                            setError(err.response.data.message as string);
+                        } else {
+                            setError(`Gagal menyimpan: ${err.response.status} ${err.response.statusText || 'Error'}`);
+                        }
+                    } else if (err.code === 'ECONNABORTED' || err.message.includes('timeout')) {
+                        setError("Pengiriman data ke server gagal karena waktu habis. Mohon coba lagi.");
+                        console.error("Timeout on update:", err);
+                    } else if (err.request) {
+                        setError("Tidak dapat terhubung ke server untuk menyimpan data.");
+                    } else {
+                        setError("Terjadi kesalahan saat menyiapkan data untuk disimpan.");
+                    }
+                } else {
+                    setError("Terjadi kesalahan tidak terduga saat menyimpan.");
+                }
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            setIsEditing(true);
+            setSuccessMessage(null);
+            setError(null);
+        }
+    };
+
+    const inputStyles =
+        'w-full mt-1 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 disabled:bg-gray-100';
+
+    if (loading && !profileData.fullName) {
+        return <div className="text-gray-600 text-center py-8">Memuat profil instruktur...</div>;
     }
 
-    // Mengatur judul dan subjudul header global saat komponen dimuat
-    setTitle("Profil Saya");
-    setSubtitle("Isikan profil pengguna Anda");
-
-    // Opsional: Cleanup function jika Anda ingin mengatur ulang judul saat komponen unmount
-    // return () => {
-    //   setTitle(""); 
-    //   setSubtitle("");
-    // };
-
-  }, [photoPreview, setTitle, setSubtitle]); // Pastikan dependensi dimasukkan, termasuk setTitle dan setSubtitle
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setForm((prevForm) => ({
-      ...prevForm,
-      [name]: value,
-    }));
-  };
-
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setPhoto(file);
-      setPhotoPreview(URL.createObjectURL(file));
-    }
-  };
-
-  const handleDateSelect = (selectedDate: Date | undefined) => {
-    setDate(selectedDate);
-    setIsCalendarOpen(false);
-  };
-
-  const handleEditToggle = () => {
-    if (isEditing) {
-      console.log("Data disimpan:", {
-        ...form,
-        tanggal: date ? format(date, 'dd/MM/yyyy') : '',
-        foto: photo,
-      });
-      // TODO: Lakukan API call untuk menyimpan data ke backend
-    }
-    setIsEditing(!isEditing);
-  };
-
-  const inputStyles =
-    'w-full mt-1 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 disabled:bg-gray-100';
-
-  return (
-    <>
-      <div className="mx-auto p-6 rounded-lg bg-white mt-4">
-        <div className="flex justify-between items-start pb-6 border-b border-gray-200">
-          <div className="flex items-start gap-4">
-            {/* BAGIAN FOTO PROFIL: Styling berlapis seperti di gambar */}
-            <div className="m-4 rounded-full border-[3px] border-gray-300 p-2 shadow-md"> {/* Outer: Border abu-abu tipis, padding, shadow */}
-              <div className="rounded-full border-[1px] border-black p-2"> {/* Inner: Border hitam tipis, padding */}
-                <div className="w-32 h-32 rounded-full overflow-hidden relative group"> {/* Ukuran w-32 h-32 */}
-                  <img
-                    src={photoPreview || "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400"}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                  />
-                  {isEditing && ( // Overlay edit hanya saat isEditing
-                    <label
-                      htmlFor="photo-upload"
-                      className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-full cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <span className="text-white text-sm">Ubah Foto</span>
-                      <input
-                        id="photo-upload"
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoChange}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Informasi Profil */}
-            <div className="flex flex-col justify-start space-y-1 mt-2">
-              <h2 className="text-xl font-semibold">{form.fullName}</h2>
-              <p className="text-sm text-gray-600">{form.email}</p>
-              <p className="text-sm text-gray-500">{form.idNumber}</p>
-            </div>
-          </div>
-
-          {/* Tombol Edit/Simpan: Warna border dan teks ungu */}
-          <button
-            onClick={handleEditToggle}
-            className="px-4 py-2 border border-[#6B46C1] text-[#6B46C1] rounded-lg hover:bg-[#6B46C1]/10 transition text-sm font-medium flex items-center gap-2"
-          >
-            {isEditing ? "Simpan" : "Edit"}
-            {!isEditing && <FaEdit className="w-4 h-4" />}
-          </button>
-        </div>
-
-        <div className="pt-6 space-y-4">
-          <div>
-            <label className="block font-semibold mb-1">Nama Lengkap</label>
-            <input
-              name="fullName"
-              placeholder="Masukkan nama lengkap"
-              value={form.fullName}
-              onChange={handleChange}
-              disabled={!isEditing}
-              className={inputStyles}
-            />
-          </div>
-          <div> {/* Nama Pengguna di bawah Nama Lengkap */}
-            <label className="block font-semibold mb-1">Nama Pengguna</label>
-            <input
-              name="username"
-              placeholder="Masukkan nama pengguna"
-              value={form.username}
-              onChange={handleChange}
-              disabled={!isEditing}
-              className={inputStyles}
-            />
-          </div>
-
-          <div>
-            <label className="block font-semibold mb-1">Alamat Lengkap</label>
-            <input
-              name="address"
-              placeholder="Masukkan Alamat lengkap"
-              value={form.address}
-              onChange={handleChange}
-              disabled={!isEditing}
-              className={inputStyles}
-            />
-          </div>
-
-          <div>
-            <label className="block font-semibold mb-1">Nomor Telepon</label>
-            <input
-              name="phone"
-              placeholder="Masukkan nomor telepon"
-              value={form.phone}
-              onChange={handleChange}
-              disabled={!isEditing}
-              className={inputStyles}
-            />
-          </div>
-
-          {/* Ketersediaan dan Keahlian - tetap dalam 2 kolom */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Ketersediaan Column */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Ketersediaan</label>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Tanggal</label>
+    if (!loading && error && !profileData.fullName) {
+        return (
+            <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-md mt-4 text-center">
+                <p>{error}</p>
                 <button
-                  type="button"
-                  onClick={() => isEditing && setIsCalendarOpen(true)}
-                  disabled={!isEditing}
-                  className={`${inputStyles} text-left flex justify-between items-center`}
+                    onClick={fetchProfile}
+                    className="mt-2 ml-2 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
                 >
-                  {date ? format(date, 'dd/MM/yyyy') : 'Pilih tanggal'}
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-400">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5" />
-                  </svg>
+                    Coba Lagi
                 </button>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Waktu</label>
-                <select
-                  name="waktu"
-                  value={form.waktu}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className={inputStyles}
-                >
-                  <option value="08.00-16.00">08.00-16.00</option>
-                  <option value="09.00-17.00">09.00-17.00</option>
-                  <option value="10.00-18.00">10.00-18.00</option>
-                </select>
-              </div>
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <div className="mx-auto p-6 rounded-lg bg-white mt-4">
+                <div className="flex justify-between items-start pb-6 border-b border-gray-200">
+                    <div className="flex items-start gap-4">
+                        <div className="m-4 rounded-full border-[3px] border-gray-300 p-2 shadow-md">
+                            <div className="rounded-full border-[1px] border-black p-2">
+                                <div className="w-32 h-32 rounded-full overflow-hidden relative group">
+                                    <img
+                                        src={photoPreview || `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.fullName || 'Instruktur')}&background=random`}
+                                        alt="Profile"
+                                        className="w-full h-full object-cover"
+                                    />
+                                    {isEditing && (
+                                        <label
+                                            htmlFor="photo-upload"
+                                            className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-full cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <span className="text-white text-sm">Ubah Foto</span>
+                                            <input
+                                                id="photo-upload"
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handlePhotoChange}
+                                                className="hidden"
+                                            />
+                                        </label>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col justify-start space-y-1 mt-2">
+                            <h2 className="text-xl font-semibold">{profileData.fullName}</h2>
+                            <p className="text-sm text-gray-600">{profileData.email}</p>
+                            <p className="text-sm text-gray-500">{profileData.idNumber}</p>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={handleEditToggle}
+                        className={`px-4 py-2 border border-[#6B46C1] text-[#6B46C1] rounded-lg transition text-sm font-medium flex items-center gap-2
+                      ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#6B46C1]/10'}`}
+                        disabled={loading}
+                    >
+                        {loading && isEditing ? 'Menyimpan...' : loading ? 'Memuat...' : (isEditing ? "Simpan" : "Edit")}
+                        {!isEditing && !loading && <FaEdit className="w-4 h-4" />}
+                    </button>
+                </div>
+
+                {successMessage && (
+                    <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mt-4" role="alert">
+                        {successMessage}
+                    </div>
+                )}
+                {error && ( 
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4" role="alert">
+                        <p>{error}</p>
+                        {(error.includes("waktu habis") || error.includes("Tidak dapat terhubung") || error.includes("Terjadi kesalahan")) && (
+                            <button
+                                onClick={isEditing ? handleEditToggle : fetchProfile}
+                                className="mt-2 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                            >
+                                Coba Lagi
+                            </button>
+                        )}
+                    </div>
+                )}
+
+                <div className="pt-6 space-y-4">
+                    <div>
+                        <label className="block font-semibold mb-1">Nama Lengkap</label>
+                        <input
+                            name="fullName"
+                            placeholder="Masukkan nama lengkap"
+                            value={profileData.fullName}
+                            onChange={handleChange}
+                            disabled={!isEditing || loading}
+                            className={inputStyles}
+                        />
+                    </div>
+                    <div>
+                        <label className="block font-semibold mb-1">Nama Pengguna</label>
+                        <input
+                            name="username"
+                            placeholder="Masukkan nama pengguna"
+                            value={profileData.username}
+                            onChange={handleChange}
+                            disabled={!isEditing || loading}
+                            className={inputStyles}
+                        />
+                    </div>
+                    <div>
+                        <label className="block font-semibold mb-1">Email</label>
+                        <input
+                            name="email"
+                            type="email"
+                            placeholder="Masukkan email"
+                            value={profileData.email}
+                            onChange={handleChange}
+                            disabled={!isEditing || loading} 
+                            className={inputStyles}
+                        />
+                    </div>
+                    <div>
+                        <label className="block font-semibold mb-1">NIK/NIP</label>
+                        <input
+                            name="idNumber"
+                            placeholder="Masukkan NIK/NIP"
+                            value={profileData.idNumber}
+                            onChange={handleChange}
+                            disabled={!isEditing || loading}
+                            className={inputStyles}
+                        />
+                    </div>
+                    <div>
+                        <label className="block font-semibold mb-1">Alamat Lengkap</label>
+                        <input
+                            name="address"
+                            placeholder="Masukkan Alamat lengkap"
+                            value={profileData.address}
+                            onChange={handleChange}
+                            disabled={!isEditing || loading}
+                            className={inputStyles}
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block font-semibold mb-1">Nomor Telepon</label>
+                        <input
+                            name="phone"
+                            placeholder="Masukkan nomor telepon"
+                            value={profileData.phone}
+                            onChange={handleChange}
+                            disabled={!isEditing || loading}
+                            className={inputStyles}
+                        />
+                    </div>
+
+                    {/* Ketersediaan dan Keahlian */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Ketersediaan</label>
+                            <div>
+                                <label className="block text-sm text-gray-600 mb-1">Tanggal Ketersediaan</label>
+                                <button
+                                    type="button"
+                                    onClick={() => isEditing && !loading && setIsCalendarOpen(true)}
+                                    disabled={!isEditing || loading}
+                                    className={`${inputStyles} text-left flex justify-between items-center`}
+                                >
+                                    {selectedDate ? format(selectedDate, 'dd/MM/yyyy', { locale: idLocale }) : 'Pilih tanggal'}
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-400">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-600 mb-1">Waktu Mulai</label>
+                                <select
+                                    name="waktuMulai"
+                                    value={profileData.waktuMulai}
+                                    onChange={handleChange}
+                                    disabled={!isEditing || loading}
+                                    className={inputStyles}
+                                >
+                                    <option value="">Pilih Waktu Mulai</option>
+                                    {[...Array(17)].map((_, i) => { 
+                                        const hour = 8 + i;
+                                        if (hour < 24) { 
+                                            const time = `${String(hour).padStart(2, '0')}:00`;
+                                            return <option key={time} value={time}>{time}</option>;
+                                        }
+                                        return null;
+                                    })}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-600 mb-1">Waktu Berakhir</label>
+                                <select
+                                    name="waktuBerakhir"
+                                    value={profileData.waktuBerakhir}
+                                    onChange={handleChange}
+                                    disabled={!isEditing || loading}
+                                    className={inputStyles}
+                                >
+                                    <option value="">Pilih Waktu Berakhir</option>
+                                    {[...Array(17)].map((_, i) => { 
+                                        const hour = 8 + i;
+                                        if (hour < 24) { 
+                                            const time = `${String(hour).padStart(2, '0')}:00`;
+                                            return <option key={time} value={time}>{time}</option>;
+                                        }
+                                        return null;
+                                    })}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Keahlian</label>
+                            <div>
+                                <label className="block text-sm text-gray-600 mb-1 invisible">Keahlian</label>
+                                <input
+                                    name="keahlian"
+                                    type="text"
+                                    value={profileData.keahlian || 'Tidak ada keahlian'} 
+                                    readOnly 
+                                    className={inputStyles}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            {/* Keahlian Column */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Keahlian</label>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1 invisible">Keahlian</label>
-                <select
-                  name="keahlian"
-                  value={form.keahlian}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className={inputStyles}
-                >
-                  <option value="Structure">Structure</option>
-                  <option value="Listening">Listening</option>
-                  <option value="Reading">Reading</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {isCalendarOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-4">
-            <h3 className="text-lg font-medium text-center mb-4">Pilih Tanggal</h3>
-            <DayPicker
-              mode="single"
-              selected={date}
-              onSelect={handleDateSelect}
-            />
-            <button
-              onClick={() => setIsCalendarOpen(false)}
-              className="w-full mt-4 px-4 py-2 bg-yellow-400 text-gray-800 font-semibold rounded-md hover:bg-yellow-500"
-            >
-              Selesai
-            </button>
-          </div>
-        </div>
-      )}
-    </>
-  );
+            {isCalendarOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl p-4">
+                        <h3 className="text-lg font-medium text-center mb-4">Pilih Tanggal</h3>
+                        <DayPicker
+                            mode="single"
+                            selected={selectedDate}
+                            onSelect={handleDateSelect}
+                            initialFocus
+                            locale={idLocale}
+                        />
+                        <button
+                            onClick={() => setIsCalendarOpen(false)}
+                            className="w-full mt-4 px-4 py-2 bg-yellow-400 text-gray-800 font-semibold rounded-md hover:bg-yellow-500"
+                        >
+                            Selesai
+                        </button>
+                    </div>
+                </div>
+            )}
+        </>
+    );
 }

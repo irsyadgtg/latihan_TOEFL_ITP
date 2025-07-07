@@ -40,7 +40,7 @@ import TambahPaket from "../pages/AdminView/KelolaPaket/TambahPaket";
 import UbahDetail from "../pages/AdminView/KelolaPaket/UbahDetail";
 import AktivasiPaket from "../pages/AdminView/KelolaPaket/Aktivasi";
 import DetailPengajuan from "../pages/AdminView/SeleksiSkorAwal/DetailPengajuan";
-import DetailTransaksi from "../pages/AdminView/RiwayatTransaksi/DetailTransaksi";
+import DetailTransaksi from "../pages/AdminView/RiwayatTransaksi/DetailTransaksi"; // Pastikan path ini benar
 
 // Instructor Pages
 import InstructorLoginPage from "../pages/auth/InstructorLoginPage";
@@ -52,6 +52,7 @@ import TinjauRencanaBelajar from "../pages/instructor/TinjauRencanaBelajar";
 import DetailRencanaBelajar from '../pages/instructor/DetailRencanaBelajar';
 import { StudyPlanProvider } from '../contexts/StudyPlanContext';
 import { adminNavigation, instructorNavigation, studentNavigation } from "../assets/data/navigasi";
+import StudyPlanFeedbackDetail from "../pages/students/StudentPlanFeedback";
 
 const AppRouter = () => {
   return (
@@ -71,24 +72,24 @@ const AppRouter = () => {
           <Route path="kelola-instruktur" element={<KelolaInstruktur />} />
           <Route path="kelola-instruktur/tambah" element={<TambahInstruktur />} />
           <Route
-            path="kelola-instruktur/ubah-ketersediaan"
+            path="kelola-instruktur/ubah-ketersediaan/:idPegawai"
             element={<UbahKetersediaan />}
           />
           <Route path="kelola-paket" element={<KelolaPaket />} />
           <Route path="kelola-paket/tambah" element={<TambahPaket />} />
-          <Route path="kelola-paket/ubah-detail" element={<UbahDetail />} />
-          <Route path="kelola-paket/aktivasi" element={<AktivasiPaket />} />
+          <Route path="kelola-paket/ubah-detail/:id" element={<UbahDetail />} />
+          <Route path="kelola-paket/aktivasi/:id" element={<AktivasiPaket />} />
           <Route path="pantau-peserta" element={<PantauDaftarPeserta />} />
           <Route path="seleksi-skor" element={<SeleksiSkor />} />
-          <Route path="seleksi-skor/detail-pengajuan" element={<DetailPengajuan />} />
+          <Route path="seleksi-skor/detail-pengajuan/:id" element={<DetailPengajuan />} />
           <Route path="riwayat-transaksi" element={<RiwayatTransaksi />} />
-          <Route path="riwayat-transaksi/detail-transaksi/:id" element={<DetailTransaksi />} />
+          <Route path="riwayat-transaksi/detail-transaksi" element={<DetailTransaksi />} />
           <Route path="notifikasi" element={<NotifikasiAdmin />} />
           <Route path="profil" element={<ProfilSaya />} />
         </Route>
 
         {/* Instructor Routes */}
-        <Route path="/instructor/login" element={<InstructorLoginPage />} />
+        <Route path="/instruktur/login" element={<InstructorLoginPage />} />
         <Route
           path="/instructor"
           element={
@@ -114,12 +115,12 @@ const AppRouter = () => {
           <Route path="awal/create" element={<CreateInitialScore />} />
           <Route path="rencana" element={<StudyPlanSubmission />} />
           <Route path="rencana/detail/:id" element={<StudyPlanSubmissionDetail />} />
-          <Route path="rencana/detail/:id/feedback" element={<StudentFeedback />} />
+          <Route path="rencana/detail/:id/feedback" element={<StudyPlanFeedbackDetail />} />
           <Route path="rencana/create" element={<StudyPlanSubmissionCreate />} />
           <Route path="langganan" element={<SubscribePage />} />
-          <Route path="langganan/form" element={<SubscribeForm />} />
+          <Route path="langganan/form/:id" element={<SubscribeForm />} />
           <Route path="langganan/riwayat" element={<SubscribeHistory />} />
-          <Route path="pembayaran" element={<SubscribeHistory />} />
+          <Route path="pembayaran" element={<SubscribeHistory />} /> {/* Ini mungkin duplikat dengan langganan/riwayat */}
 
         </Route>
 

@@ -7,7 +7,7 @@ use App\Models\Peserta;
 use App\Models\Pegawai;
 use App\Models\PesertaPaketKursus;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
 class KelolaPaketKursusController extends Controller
@@ -34,7 +34,7 @@ class KelolaPaketKursusController extends Controller
             ->get();
 
         // Ambil semua paket yang dia sudah beli dan masih aktif statusnya (khusus peserta)
-        $paketDibeli = PaketKursus::with('pegawai:id,nama')
+        $paketDibeli = PaketKursus::with('pegawai:idPegawai,namaLengkap')
             ->select('idPaketKursus', 'namaPaket', 'harga', 'fasilitas', 'masaBerlaku', 'aktif', 'idPegawai')
             ->whereIn('idPaketKursus', function($query) use ($peserta) {
                 $query->select('idPaketKursus')
@@ -69,6 +69,25 @@ class KelolaPaketKursusController extends Controller
             ], 422);
         }
 
+        $fasilitasValid = [
+            'listening',
+            'structure',
+            'reading',
+            'konsultasi',
+            'simulasi'
+        ];
+
+        // Validasi isi fasilitas
+        $fasilitasArray = array_map('trim', explode(',', $request->fasilitas));
+        $invalidItems = array_diff($fasilitasArray, $fasilitasValid);
+
+        if (!empty($invalidItems)) {
+            return response()->json([
+                'message' => 'Beberapa item fasilitas tidak valid. Cek kembali ketentuan fasilitas yang perlu diinput',
+                'invalid_items' => array_values($invalidItems)
+            ], 422);
+        }
+
         $user = Auth::user(); // ambil user login
 
         // Ambil id pegawai dari user login
@@ -78,7 +97,7 @@ class KelolaPaketKursusController extends Controller
             'namaPaket' => $request->namaPaket,
             'harga' => $request->harga,
             'masaBerlaku' => $request->masaBerlaku,
-            'fasilitas' => $request->fasilitas,
+            'fasilitas' => implode(',', $fasilitasArray),
             'aktif' => true,
             'idPegawai' => $idPegawai,
         ]);
@@ -124,11 +143,29 @@ class KelolaPaketKursusController extends Controller
             ], 422);
         }
 
+        $fasilitasValid = [
+            'listening',
+            'structure',
+            'reading',
+            'konsultasi',
+            'simulasi'
+        ];
+
+        $fasilitasArray = array_map('trim', explode(',', $request->fasilitas));
+        $invalidItems = array_diff($fasilitasArray, $fasilitasValid);
+
+        if (!empty($invalidItems)) {
+            return response()->json([
+                'message' => 'Beberapa item fasilitas tidak valid.',
+                'invalid_items' => array_values($invalidItems)
+            ], 422);
+        }
+
         // Update hanya 3 field yang diizinkan
         $paket->update([
             'namaPaket' => $request->namaPaket,
             'harga' => $request->harga,
-            'fasilitas' => $request->fasilitas,
+            'fasilitas' => implode(',', $fasilitasArray),
         ]);
 
         return response()->json([
