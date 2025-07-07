@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import AuthLayout from '../../layouts/AuthLayout';
-import { Eye, EyeOff } from 'lucide-react';
-import axiosInstance from '../../services/axios';
-import { AxiosError } from 'axios';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import AuthLayout from "../../layouts/AuthLayout";
+import { Eye, EyeOff } from "lucide-react";
+import axiosInstance from "../../services/axios";
+import { AxiosError } from "axios";
 
 const InstructorLoginPage: React.FC = () => {
-  const [login, setLogin] = useState(''); // <--- PERBAIKAN: Ubah kembali 'email' menjadi 'login'
-  const [password, setPassword] = useState('');
+  const [login, setLogin] = useState(""); // <--- PERBAIKAN: Ubah kembali 'email' menjadi 'login'
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,74 +20,111 @@ const InstructorLoginPage: React.FC = () => {
 
     try {
       // Mengirim payload dengan key 'login'
-      const response = await axiosInstance.post('/login', {
+      const response = await axiosInstance.post("/login", {
         login, // <--- PERBAIKAN: Kirim payload dengan key 'login'
         password,
       });
 
-      console.log('Login successful response data:', response.data);
-      
-      // Mengambil token dari properti 'token' seperti yang dikonfirmasi di AuthController
-      const authToken = response.data.token; 
+      console.log("Login successful response data:", response.data);
 
-      if (authToken && typeof authToken === 'string') {
-        localStorage.setItem('AuthToken', authToken); 
-        console.log('Token disimpan di localStorage dengan key AuthToken:', authToken);
+      // Mengambil token dari properti 'token' seperti yang dikonfirmasi di AuthController
+      const authToken = response.data.token;
+
+      if (authToken && typeof authToken === "string") {
+        localStorage.setItem("AuthToken", authToken);
+        console.log(
+          "Token disimpan di localStorage dengan key AuthToken:",
+          authToken
+        );
         // Jika backend Anda juga mengirim data user, Anda bisa menyimpannya juga:
         // if (response.data.user) {
         //   localStorage.setItem('userData', JSON.stringify(response.data.user));
         // }
+        // TAMBAHAN: Simpan role ke localStorage
+        if (response.data.user && response.data.user.role) {
+          localStorage.setItem("role", response.data.user.role);
+          console.log(
+            "Role disimpan di localStorage:",
+            response.data.user.role
+          );
+        }
       } else {
-        console.warn('Login berhasil, tapi token tidak ditemukan atau formatnya salah di respons:', response.data);
-        setError('Login berhasil, tapi gagal mengamankan sesi. Token tidak ditemukan atau tidak valid.');
+        console.warn(
+          "Login berhasil, tapi token tidak ditemukan atau formatnya salah di respons:",
+          response.data
+        );
+        setError(
+          "Login berhasil, tapi gagal mengamankan sesi. Token tidak ditemukan atau tidak valid."
+        );
         setLoading(false);
         return;
       }
 
-      navigate('/instructor/profil'); 
-
+      navigate("/instructor"); // Arahkan ke dashboard instruktur
     } catch (err) {
-      console.error('Login failed:', err);
+      console.error("Login failed:", err);
       if (err instanceof AxiosError) {
         if (err.response) {
           // Tangani status 401
           if (err.response.status === 401) {
-            setError('Email atau password salah. Silakan coba lagi.');
-          } 
+            setError("Email atau password salah. Silakan coba lagi.");
+          }
           // Tangani status 422 untuk error validasi, jika backend mengembalikannya dengan 422
-          else if (err.response.status === 422 && err.response.data && typeof err.response.data === 'object' && 'errors' in err.response.data) {
-             const validationErrors = (err.response.data as any).errors;
-             let errorMessages = '';
-             for (const key in validationErrors) {
-                 errorMessages += validationErrors[key].join(', ') + '\n';
-             }
-             setError(`Validasi gagal:\n${errorMessages}`);
+          else if (
+            err.response.status === 422 &&
+            err.response.data &&
+            typeof err.response.data === "object" &&
+            "errors" in err.response.data
+          ) {
+            const validationErrors = (err.response.data as any).errors;
+            let errorMessages = "";
+            for (const key in validationErrors) {
+              errorMessages += validationErrors[key].join(", ") + "\n";
+            }
+            setError(`Validasi gagal:\n${errorMessages}`);
           }
           // Perbaikan: Tangani status 500 yang berisi pesan 'Unauthenticated.' atau pesan validasi
-          else if (err.response.status === 500 && err.response.data && typeof err.response.data === 'object' && 'message' in err.response.data) {
-             const backendMessage = (err.response.data as any).message as string;
-             // Jika pesan adalah "Unauthenticated." atau pesan validasi seperti "The login field is required."
-             setError(`Server Error: ${backendMessage}`);
-             if (backendMessage === 'Unauthenticated.') {
-                 // Sesi tidak valid, arahkan ke login
-                 localStorage.removeItem('AuthToken');
-                 localStorage.removeItem('userData');
-                 navigate('/instructor/login'); 
-             }
+          else if (
+            err.response.status === 500 &&
+            err.response.data &&
+            typeof err.response.data === "object" &&
+            "message" in err.response.data
+          ) {
+            const backendMessage = (err.response.data as any).message as string;
+            // Jika pesan adalah "Unauthenticated." atau pesan validasi seperti "The login field is required."
+            setError(`Server Error: ${backendMessage}`);
+            if (backendMessage === "Unauthenticated.") {
+              // Sesi tidak valid, arahkan ke login
+              localStorage.removeItem("AuthToken");
+              localStorage.removeItem("userData");
+              navigate("/instructor/login");
+            }
           }
           // Tangani error lain dengan pesan spesifik dari backend (misal: 403 Forbidden)
-          else if (err.response.data && typeof err.response.data === 'object' && 'message' in err.response.data) {
+          else if (
+            err.response.data &&
+            typeof err.response.data === "object" &&
+            "message" in err.response.data
+          ) {
             setError(err.response.data.message as string);
           } else {
-            setError(`Terjadi kesalahan: ${err.response.status} ${err.response.statusText || 'Error'}`);
+            setError(
+              `Terjadi kesalahan: ${err.response.status} ${
+                err.response.statusText || "Error"
+              }`
+            );
           }
         } else if (err.request) {
-          setError('Tidak dapat terhubung ke server. Pastikan server aktif dan koneksi internet stabil.');
+          setError(
+            "Tidak dapat terhubung ke server. Pastikan server aktif dan koneksi internet stabil."
+          );
         } else {
-          setError('Terjadi kesalahan saat mengatur permintaan login. Mohon coba lagi.');
+          setError(
+            "Terjadi kesalahan saat mengatur permintaan login. Mohon coba lagi."
+          );
         }
       } else {
-        setError('Terjadi kesalahan tidak terduga saat login.');
+        setError("Terjadi kesalahan tidak terduga saat login.");
       }
     } finally {
       setLoading(false);
@@ -107,7 +144,10 @@ const InstructorLoginPage: React.FC = () => {
 
       <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm" role="alert">
+          <div
+            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm"
+            role="alert"
+          >
             {error}
           </div>
         )}
@@ -145,7 +185,7 @@ const InstructorLoginPage: React.FC = () => {
             <input
               id="password"
               name="password"
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               autoComplete="current-password"
               required
               value={password}
@@ -185,7 +225,7 @@ const InstructorLoginPage: React.FC = () => {
             disabled={loading}
             className="flex w-full justify-center rounded-md border border-transparent bg-[#eec429] py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
           >
-            {loading ? 'Memproses...' : 'Masuk'}
+            {loading ? "Memproses..." : "Masuk"}
           </button>
         </div>
       </form>

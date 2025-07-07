@@ -102,6 +102,46 @@ class ConsultationController extends Controller
         }
     }
 
+    /**
+     * Helper: Check if instructor is available at current time
+     */
+    private function isInstructorAvailable($instructorId)
+    {
+        $instructor = Pengguna::where('idPengguna', $instructorId)
+            ->where('role', 'instruktur')
+            ->first();
+
+        if (!$instructor) {
+            Log::warning('Instructor not found for availability check', ['instructor_id' => $instructorId]);
+            return false;
+        }
+
+        $now = Carbon::now('Asia/Jakarta');
+        $today = $now->toDateString();
+        $currentTime = $now->toTimeString();
+
+        Log::info('Checking instructor availability', [
+            'instructor_id' => $instructorId,
+            'today' => $today,
+            'current_time' => $currentTime
+        ]);
+
+        $isAvailable = DB::table('pegawai')
+            ->join('instruktur', 'pegawai.idPegawai', '=', 'instruktur.idPegawai')
+            ->where('pegawai.idPegawai', $instructor->idPegawai)
+            ->where('pegawai.status', 'aktif')
+            ->where('instruktur.tglKetersediaan', $today)
+            ->whereBetween(DB::raw("'$currentTime'"), [DB::raw('instruktur.waktuMulai'), DB::raw('instruktur.waktuBerakhir')])
+            ->exists();
+
+        Log::info('Instructor availability result', [
+            'instructor_id' => $instructorId,
+            'is_available' => $isAvailable
+        ]);
+
+        return $isAvailable;
+    }
+
     // UPDATE METHOD getInstructors() - Ganti method yang sudah ada dengan ini:
     public function getInstructors()
     {

@@ -27,7 +27,7 @@ class MessageObserver
         $message->load(['consultation.student', 'consultation.instructor', 'sender']);
 
         $consultation = $message->consultation;
-        
+
         if (!$consultation) {
             Log::warning('Message created without consultation', [
                 'message_id' => $message->id
@@ -83,7 +83,9 @@ class MessageObserver
             'consultation_id' => $consultation->id,
             'sender_id' => $message->sender_id,
             'sender_name' => $message->sender->username ?? 'Unknown',
-            'sender_role' => $senderRole
+            'sender_role' => $senderRole,
+            'student_id' => $consultation->student_id,
+            'instructor_id' => $consultation->instructor_id
         ];
 
         // Tambah info attachment jika ada
@@ -115,7 +117,6 @@ class MessageObserver
                 'sender_role' => $senderRole,
                 'action' => $actionType
             ]);
-
         } catch (\Exception $e) {
             Log::error('Failed to create message notification', [
                 'message_id' => $message->id,

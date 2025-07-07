@@ -1,11 +1,18 @@
 import React, { useEffect, useState } from "react";
-import api from "../../services/api";
 import UnitSidebar from "./UnitSidebar";
 import PageViewer from "./PageViewer";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import QuizViewer from "./QuizViewer";
 
+import Confirm from "../shared/components/Confirm";
+
+import { useDashboardLayoutContext } from "../../layouts/DashboardLayout";
+import axiosInstance from "../../services/axios";
+import axios, { AxiosError } from "axios";
+
 function Materi() {
+  const { setTitle, setSubtitle } = useDashboardLayoutContext();
+
   const { modul } = useParams();
   const [searchParams] = useSearchParams();
   const [unit, setUnit] = useState(0);
@@ -50,8 +57,36 @@ function Materi() {
   });
 
   const navigate = useNavigate();
+
+  // FIXED: Role detection dengan URL protection
+  const getCurrentRole = () => {
+    const storedRole = localStorage.getItem("role");
+    const pathname = window.location.pathname;
+
+    // IMMEDIATE redirect jika role mismatch
+    if (storedRole === "peserta" && pathname.includes("/instructor/")) {
+      window.location.replace("/student/materi");
+      return "peserta";
+    }
+
+    if (storedRole === "instruktur" && pathname.includes("/student/")) {
+      window.location.replace("/instructor/materi");
+      return "instruktur";
+    }
+
+    // PRIORITASKAN localStorage role, bukan URL
+    return storedRole;
+  };
+
+  const getBasePath = () => {
+    if (role === "instruktur") {
+      return "/instructor";
+    }
+    return "/student"; // Default untuk peserta
+  };
+
+  const role = getCurrentRole();
   const token = localStorage.getItem("token");
-  const role = localStorage.getItem("role");
 
   const getSkillName = (modul, unit) => {
     if (unit === 0) return null;
@@ -116,7 +151,7 @@ function Materi() {
     try {
       console.log("Materi: Fetching unlocked units for", modul);
 
-      const response = await api.get("/units/unlocked", {
+      const response = await axiosInstance.get("/units/unlocked", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -233,10 +268,14 @@ function Materi() {
       );
 
       console.log("=== END DEBUG ===");
-      
     } catch (error) {
       console.error("Materi: Failed to fetch unlocked units:", error);
-
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        localStorage.removeItem("AuthToken");
+        localStorage.removeItem("role");
+        navigate("/login");
+        return;
+      }
       setUnitAccess({
         unlockedUnits: [0],
         hasActiveFeedback: false,
@@ -272,6 +311,22 @@ function Materi() {
         currentUnit: unit,
       });
 
+      // 🔧 CRITICAL FIX: UPDATE UNIT IMMEDIATELY jika urlUnit valid
+      if (urlUnit !== null && !isNaN(urlUnit)) {
+        const targetUnit = parseInt(urlUnit);
+
+        console.log("Materi: URL unit detected, updating immediately", {
+          currentUnit: unit,
+          targetUnit: targetUnit,
+          isAccessible: role !== "peserta" || isUnitAccessible(targetUnit),
+        });
+
+        // 🔧 UPDATE STATE UNIT LANGSUNG
+        if (targetUnit !== unit) {
+          setUnit(targetUnit);
+        }
+      }
+
       setUrlNavigationTarget({
         targetUnit: urlUnit ? parseInt(urlUnit) : null,
         targetPageId: urlPageId ? parseInt(urlPageId) : null,
@@ -279,6 +334,59 @@ function Materi() {
       });
     }
   }, [searchParams, modul]);
+
+  useEffect(() => {
+    const urlUnit = searchParams.get("unit");
+
+    if (urlUnit !== null && !isNaN(urlUnit)) {
+      const targetUnit = parseInt(urlUnit);
+
+      console.log("Materi: Direct URL unit update", {
+        urlUnit: targetUnit,
+        currentUnit: unit,
+        shouldUpdate: targetUnit !== unit,
+        isAccessible: role !== "peserta" || isUnitAccessible(targetUnit),
+      });
+
+      // 🔧 IMMEDIATE UPDATE JIKA UNIT BERBEDA
+      if (targetUnit !== unit) {
+        // Check accessibility untuk peserta
+        if (role === "peserta" && !isUnitAccessible(targetUnit)) {
+          console.log(
+            "Materi: Access denied to target unit from URL:",
+            targetUnit
+          );
+          setError(
+            `Unit ${targetUnit} is locked. Complete your learning plan to unlock it.`
+          );
+          return;
+        }
+
+        // 🔧 UPDATE UNIT STATE
+        setUnit(targetUnit);
+
+        // Reset related states
+        setPage(null);
+        setSelectedPageId(null);
+        setShowQuiz(false);
+        setFormMode(null);
+        setEditingPageId(null);
+        setError("");
+
+        console.log("Materi: Unit updated to:", targetUnit);
+      }
+    }
+  }, [searchParams.get("unit"), role, isUnitAccessible]); // 🔧 Specific dependencies
+
+  // ========== DEBUGGING: TAMBAH useEffect UNTUK MONITOR UNIT CHANGES ==========
+  // Tambah ini untuk debug:
+
+  useEffect(() => {
+    console.log("Materi: Unit state changed to:", unit);
+    console.log(
+      "Materi: This will trigger fetchPages, checkQuiz, fetchProgressData"
+    );
+  }, [unit]);
 
   useEffect(() => {
     if (
@@ -315,7 +423,7 @@ function Materi() {
           setUrlNavigationTarget((prev) => ({ ...prev, processed: true }));
 
           if (searchParams.has("unit") || searchParams.has("page")) {
-            navigate(`/materi/${modul}`, { replace: true });
+            navigate(`${getBasePath()}/materi/${modul}`, { replace: true });
           }
           return;
         }
@@ -346,7 +454,7 @@ function Materi() {
           setUrlNavigationTarget((prev) => ({ ...prev, processed: true }));
 
           if (searchParams.has("unit") || searchParams.has("page")) {
-            navigate(`/materi/${modul}`, { replace: true });
+            navigate(`${getBasePath()}/materi/${modul}`, { replace: true });
           }
         } else {
           console.log(
@@ -360,7 +468,7 @@ function Materi() {
           setUrlNavigationTarget((prev) => ({ ...prev, processed: true }));
 
           if (searchParams.has("unit") || searchParams.has("page")) {
-            navigate(`/materi/${modul}`, { replace: true });
+            navigate(`${getBasePath()}/materi/${modul}`, { replace: true });
           }
         }
       } else if (
@@ -371,7 +479,7 @@ function Materi() {
         setUrlNavigationTarget((prev) => ({ ...prev, processed: true }));
 
         if (searchParams.has("unit") || searchParams.has("page")) {
-          navigate(`/materi/${modul}`, { replace: true });
+          navigate(`${getBasePath()}/materi/${modul}`, { replace: true });
         }
       } else if (
         urlNavigationTarget.targetPageId !== null &&
@@ -415,7 +523,7 @@ function Materi() {
 
     try {
       console.log("Materi: fetchProgressData called");
-      const response = await api.get(
+      const response = await axiosInstance.get(
         `/progress/unit?modul=${modul}&unit_number=${unit}`,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -448,6 +556,14 @@ function Materi() {
       setProgressData(response.data);
     } catch (error) {
       console.error("Materi: Failed to fetch progress data:", error);
+
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        localStorage.removeItem("AuthToken");
+        localStorage.removeItem("role");
+        navigate("/login");
+        return;
+      }
+
       setProgressData({
         completed_pages: [],
         can_access_quiz: false,
@@ -549,7 +665,7 @@ function Materi() {
       setError("");
 
       console.log("Materi: Fetching pages for", { modul, unit });
-      const res = await api.get("/pages", {
+      const res = await axiosInstance.get("/pages", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -591,6 +707,12 @@ function Materi() {
       setPages(sorted);
     } catch (e) {
       console.error("Materi: Fetch pages error:", e);
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        localStorage.removeItem("AuthToken");
+        localStorage.removeItem("role");
+        navigate("/login");
+        return;
+      }
       setError(
         "Gagal mengambil data: " + (e.response?.data?.message || e.message)
       );
@@ -606,7 +728,7 @@ function Materi() {
     try {
       console.log("Checking quiz for:", { modul, unit, role });
 
-      const res = await api.get(
+      const res = await axiosInstance.get(
         `/questions?modul=${modul}&unit_number=${unit}`,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -642,6 +764,12 @@ function Materi() {
       });
     } catch (err) {
       console.error("Check quiz error:", err);
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        localStorage.removeItem("AuthToken");
+        localStorage.removeItem("role");
+        navigate("/login");
+        return;
+      }
       console.error("Error details:", {
         status: err.response?.status,
         data: err.response?.data,
@@ -785,7 +913,7 @@ function Materi() {
         setUrlNavigationTarget((prev) => ({ ...prev, processed: true }));
 
         if (searchParams.has("unit") || searchParams.has("page")) {
-          navigate(`/materi/${modul}`, { replace: true });
+          navigate(`${getBasePath()}/materi/${modul}`, { replace: true });
         }
         return;
       } else {
@@ -795,7 +923,7 @@ function Materi() {
         setUrlNavigationTarget((prev) => ({ ...prev, processed: true }));
 
         if (searchParams.has("unit") || searchParams.has("page")) {
-          navigate(`/materi/${modul}`, { replace: true });
+          navigate(`${getBasePath()}/materi/${modul}`, { replace: true });
         }
       }
     }
@@ -950,22 +1078,6 @@ function Materi() {
       return;
     }
 
-    if (showOrderWarning) {
-      const confirmMessage = `Ubah Urutan Halaman?
-
-Memindahkan halaman ini akan menyesuaikan progress peserta secara otomatis.
-
-Yang terjadi:
-- Peserta tetap bisa melanjutkan belajar
-- Progress tidak hilang
-- Urutan baru langsung berlaku
-
-Yakin ingin melanjutkan?`;
-
-      if (!window.confirm(confirmMessage)) {
-        return;
-      }
-    }
 
     if (formMode === "edit" && !editingPageId) {
       setError("Tidak ada halaman yang dipilih untuk diedit");
@@ -991,7 +1103,7 @@ Yakin ingin melanjutkan?`;
       let savedPage;
 
       if (formMode === "create") {
-        response = await api.post("/pages", formData, {
+        response = await axiosInstance.post("/pages", formData, {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "multipart/form-data",
@@ -1000,12 +1112,16 @@ Yakin ingin melanjutkan?`;
         savedPage = response.data;
       } else if (formMode === "edit" && editingPageId) {
         formData.append("_method", "PUT");
-        response = await api.post(`/pages/${editingPageId}`, formData, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        });
+        response = await axiosInstance.post(
+          `/pages/${editingPageId}`,
+          formData,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
         savedPage = response.data;
       }
 
@@ -1018,6 +1134,12 @@ Yakin ingin melanjutkan?`;
       }
     } catch (err) {
       console.error("Submit error:", err);
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        localStorage.removeItem("AuthToken");
+        localStorage.removeItem("role");
+        navigate("/login");
+        return;
+      }
       const errorMessage =
         err.response?.data?.message || err.response?.data?.error || err.message;
       setError("Gagal menyimpan: " + errorMessage);
@@ -1037,28 +1159,16 @@ Yakin ingin melanjutkan?`;
       return;
     }
 
-    const pageTitle = pageToDelete.title;
-    const pageId = pageToDelete.id;
-
-    if (
-      !window.confirm(
-        `Apakah Anda yakin ingin menghapus halaman "${pageTitle}"?`
-      )
-    ) {
-      return;
-    }
-
     setLoading(true);
     setError("");
 
     try {
-      await api.delete(`/pages/${pageId}`, {
+      await axiosInstance.delete(`/pages/${pageToDelete.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       setFormMode(null);
       setEditingPageId(null);
-
       setForm({
         title: "",
         attachment: "",
@@ -1071,6 +1181,12 @@ Yakin ingin melanjutkan?`;
       await fetchProgressData();
     } catch (err) {
       console.error("Delete error:", err);
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        localStorage.removeItem("AuthToken");
+        localStorage.removeItem("role");
+        navigate("/login");
+        return;
+      }
       const errorMessage =
         err.response?.data?.message || err.response?.data?.error || err.message;
       setError("Gagal menghapus: " + errorMessage);
@@ -1318,42 +1434,6 @@ Yakin ingin melanjutkan?`;
         overflow: "hidden",
       }}
     >
-      {/* Fixed Header */}
-      <div
-        style={{
-          backgroundColor: "#f8f9fa",
-          padding: "1rem 1.5rem",
-          borderBottom: "1px solid #e9ecef",
-          flexShrink: 0,
-        }}
-      >
-        <h2
-          style={{
-            margin: "0",
-            color: "#495057",
-            textTransform: "capitalize",
-            fontSize: "1.2rem",
-            fontWeight: "600",
-          }}
-        >
-          {modul.replace(/([A-Z])/g, " $1")} - Unit{" "}
-          {unit === 0 ? "Overview" : unit}
-          {unit > 0 &&
-            getSkillName(modul, unit) &&
-            `: ${getSkillName(modul, unit)}`}
-          {role === "peserta" &&
-            unit > 0 &&
-            pages.length > 0 &&
-            ` (${progressData.completed_pages?.length || 0}/${
-              pages.length
-            } pages completed)`}
-          {role === "peserta" &&
-            unit > 0 &&
-            isUnitAccessible(unit) &&
-            " • Unlocked"}
-        </h2>
-      </div>
-
       {/* Error/Loading Messages */}
       {(error || loading || unitAccess.error) && (
         <div style={{ flexShrink: 0 }}>
@@ -1450,7 +1530,7 @@ Yakin ingin melanjutkan?`;
           role={role}
           unitAccessBreakdown={unitAccess.breakdown} // TAMBAHAN: Pass breakdown
         />
-        ;
+
         <div
           style={{
             flex: 1,
@@ -1488,21 +1568,6 @@ Yakin ingin melanjutkan?`;
                     }`}
               </h3>
 
-              {showOrderWarning && (
-                <div
-                  style={{
-                    backgroundColor: "#fff3cd",
-                    border: "1px solid #ffeaa7",
-                    padding: "1rem",
-                    marginBottom: "1.5rem",
-                    borderRadius: "6px",
-                    fontSize: "0.9rem",
-                  }}
-                >
-                  <strong>Perhatian:</strong> Mengubah urutan halaman akan
-                  menyesuaikan progress peserta secara otomatis.
-                </div>
-              )}
 
               <form
                 onSubmit={handleSubmit}
@@ -1817,23 +1882,85 @@ Yakin ingin melanjutkan?`;
                     Batal
                   </button>
                   {formMode === "edit" && (
-                    <button
-                      type="button"
-                      onClick={handleDelete}
-                      disabled={loading}
-                      style={{
-                        backgroundColor: loading ? "#6c757d" : "#dc3545",
-                        color: "white",
-                        border: "none",
-                        padding: "0.75rem 1.5rem",
-                        borderRadius: "6px",
-                        cursor: loading ? "not-allowed" : "pointer",
-                        fontSize: "0.9rem",
-                        fontWeight: "500",
+                    <Confirm
+                      title="Konfirmasi Hapus?"
+                      description="Data yang dihapus tidak dapat dikembalikan."
+                      confirmText="HAPUS"
+                      confirmButtonType="danger"
+                      onConfirm={async () => {
+                        const pageToDelete =
+                          formMode === "edit" && editingPageId
+                            ? pages.find((p) => p.id === editingPageId)
+                            : page;
+
+                        if (!pageToDelete) {
+                          setError(
+                            "Tidak ada halaman yang dipilih untuk dihapus"
+                          );
+                          return;
+                        }
+
+                        setLoading(true);
+                        setError("");
+
+                        try {
+                          await axiosInstance.delete(
+                            `/pages/${pageToDelete.id}`,
+                            {
+                              headers: { Authorization: `Bearer ${token}` },
+                            }
+                          );
+
+                          setFormMode(null);
+                          setEditingPageId(null);
+                          setForm({
+                            title: "",
+                            attachment: "",
+                            description: "",
+                            order_number: 1,
+                            attachment_file: null,
+                          });
+
+                          await fetchPages();
+                          await fetchProgressData();
+                        } catch (err) {
+                          console.error("Delete error:", err);
+                          if (
+                            axios.isAxiosError(err) &&
+                            err.response?.status === 401
+                          ) {
+                            localStorage.removeItem("AuthToken");
+                            localStorage.removeItem("role");
+                            navigate("/login");
+                            return;
+                          }
+                          const errorMessage =
+                            err.response?.data?.message ||
+                            err.response?.data?.error ||
+                            err.message;
+                          setError("Gagal menghapus: " + errorMessage);
+                        } finally {
+                          setLoading(false);
+                        }
                       }}
                     >
-                      Hapus Halaman
-                    </button>
+                      <button
+                        type="button"
+                        disabled={loading}
+                        style={{
+                          backgroundColor: loading ? "#6c757d" : "#dc3545",
+                          color: "white",
+                          border: "none",
+                          padding: "0.75rem 1.5rem",
+                          borderRadius: "6px",
+                          cursor: loading ? "not-allowed" : "pointer",
+                          fontSize: "0.9rem",
+                          fontWeight: "500",
+                        }}
+                      >
+                        Hapus Halaman
+                      </button>
+                    </Confirm>
                   )}
                 </div>
               </form>
@@ -1887,16 +2014,6 @@ Yakin ingin melanjutkan?`;
                     boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
                   }}
                 >
-                  <h4
-                    style={{
-                      margin: "0 0 1rem 0",
-                      color: "#495057",
-                      fontSize: "1rem",
-                      fontWeight: "600",
-                    }}
-                  >
-                    Kelola Halaman
-                  </h4>
                   <div
                     style={{
                       display: "flex",

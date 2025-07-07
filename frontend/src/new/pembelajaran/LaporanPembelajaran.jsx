@@ -1,32 +1,101 @@
 import React, { useEffect, useState } from 'react';
-import api from '../../services/api';
-
+import { useNavigate } from 'react-router-dom';
+import axiosInstance from '../../services/axios';
+import axios from 'axios';
 
 export default function LaporanPembelajaran() {
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  const role = localStorage.getItem('role');
+  const navigate = useNavigate();
+
+  // 🔥 APPLY PATTERN: URL-based role detection
+  const getCurrentRole = () => {
+    const storedRole = localStorage.getItem("role");
+    const pathname = window.location.pathname;
+
+    // localStorage role is PRIMARY source of truth
+    if (storedRole) {
+      return storedRole;
+    }
+
+    // Fallback to URL-based detection only if localStorage empty
+    if (pathname.includes("/student/")) return "peserta";
+    if (pathname.includes("/instructor/")) return "instruktur";
+    if (pathname.includes("/admin/")) return "admin";
+
+    return "peserta"; // Default fallback
+  };
+
+  const currentRole = getCurrentRole();
   const token = localStorage.getItem('token');
 
+  // 🔥 DEBUG: Log for monitoring
+  console.log("LaporanPembelajaran - Current role detected:", currentRole);
+  console.log("LaporanPembelajaran - Current pathname:", window.location.pathname);
+
+  // 🔥 APPLY PATTERN: Dynamic base path
+  const getBasePath = () => {
+    if (currentRole === "instruktur") return "/instructor";
+    if (currentRole === "admin") return "/admin";
+    return "/student";
+  };
+
+  // 🔥 ROUTE VALIDATION: Redirect if URL doesn't match role
   useEffect(() => {
-    if (role === 'peserta') {
+    const pathname = window.location.pathname;
+
+    if (!currentRole) {
+      navigate("/login");
+      return;
+    }
+
+    if (currentRole === "peserta" && pathname.startsWith("/instructor/")) {
+      navigate("/student/laporan-pembelajaran", { replace: true });
+      return;
+    }
+
+    if (currentRole === "instruktur" && pathname.startsWith("/student/")) {
+      navigate("/instructor/dashboard", { replace: true });
+      return;
+    }
+
+    if (
+      currentRole === "admin" &&
+      (pathname.startsWith("/student/") || pathname.startsWith("/instructor/"))
+    ) {
+      navigate("/admin/dashboard", { replace: true });
+      return;
+    }
+  }, [currentRole, navigate]);
+
+  useEffect(() => {
+    if (currentRole === 'peserta') {
       checkProgress();
     } else {
       setError('Hanya peserta yang dapat mengakses laporan pembelajaran');
       setLoading(false);
     }
-  }, [role]);
+  }, [currentRole]);
 
   const checkProgress = async () => {
     try {
-      const res = await api.get('/laporan/progress', {
+      const res = await axiosInstance.get('/laporan/progress', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setProgress(res.data);
     } catch (err) {
       console.error('Error checking progress:', err);
+
+      // 🔥 APPLY PATTERN: Enhanced error handling
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        localStorage.removeItem("AuthToken");
+        localStorage.removeItem("role");
+        navigate("/login");
+        return;
+      }
+
       setError(err.response?.data?.message || 'Gagal mengecek progress pembelajaran');
     } finally {
       setLoading(false);
@@ -38,7 +107,9 @@ export default function LaporanPembelajaran() {
       alert('Selesaikan semua requirements terlebih dahulu');
       return;
     }
-    window.location.href = '/laporan-pembelajaran/detail';
+    
+    // 🔥 FIXED: Use role-based navigation
+    navigate(`${getBasePath()}/laporan-pembelajaran/detail`);
   };
 
   const getProgressColor = (percentage) => {
@@ -145,7 +216,7 @@ export default function LaporanPembelajaran() {
         <h2 style={{ color: '#dc3545' }}>Error</h2>
         <p>{error}</p>
         <button 
-          onClick={() => window.location.href = '/dashboard'}
+          onClick={() => navigate(`${getBasePath()}`)}
           style={{
             backgroundColor: '#B6252A',
             color: 'white',
@@ -186,7 +257,7 @@ export default function LaporanPembelajaran() {
               dan tunggu feedback dari instruktur untuk dapat mengakses laporan pembelajaran.
             </p>
             <button 
-              onClick={() => window.location.href = '/dashboard'}
+              onClick={() => navigate(`${getBasePath()}`)}
               style={{
                 backgroundColor: '#B6252A',
                 color: 'white',
@@ -388,7 +459,7 @@ export default function LaporanPembelajaran() {
               Lihat Laporan Lengkap
             </button>
             <button 
-              onClick={() => window.location.href = '/dashboard'}
+              onClick={() => navigate(`${getBasePath()}`)}
               style={{
                 backgroundColor: '#6c757d',
                 color: 'white',
@@ -451,7 +522,7 @@ export default function LaporanPembelajaran() {
                 Lihat Laporan Lengkap (Tidak Tersedia)
               </button>
               <button 
-                onClick={() => window.location.href = '/materi'}
+                onClick={() => navigate(`${getBasePath()}/materi`)}
                 style={{
                   backgroundColor: '#B6252A',
                   color: 'white',

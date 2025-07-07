@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import api from '../../services/api';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useDashboardLayoutContext } from "../../layouts/DashboardLayout";
+import axiosInstance from "../../services/axios";
+import axios, { AxiosError } from "axios";
 
 export default function PageViewer({ 
   page, 
@@ -16,8 +19,12 @@ export default function PageViewer({
   unit,
   hasQuestions 
 }) {
+
+  const { setTitle, setSubtitle } = useDashboardLayoutContext();
+  const navigate = useNavigate();
+  
   const role = localStorage.getItem('role');
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('AuthToken');
   const userId = localStorage.getItem('user_id');
   
   const [isCompleted, setIsCompleted] = useState(false);
@@ -68,7 +75,7 @@ export default function PageViewer({
     try {
       console.log('PageViewer: checkPageStatus called for page', pageId);
       
-      const progressRes = await api.get(`/progress/unit?modul=${modul}&unit_number=${unit}`, {
+      const progressRes = await axiosInstance.get(`/progress/unit?modul=${modul}&unit_number=${unit}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -109,6 +116,14 @@ export default function PageViewer({
 
     } catch (error) {
       console.error('PageViewer: Failed to check page status:', error);
+      
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        localStorage.removeItem("AuthToken");
+        localStorage.removeItem("role");
+        navigate("/login");
+        return;
+      }
+      
       setProgressData({ completed_pages: [], can_access_quiz: false, next_required_page: null });
     }
   };
@@ -126,7 +141,7 @@ export default function PageViewer({
     try {
       console.log('PageViewer: Marking page complete:', page.id);
       
-      const response = await api.post(`/pages/${page.id}/complete`, {}, {
+      const response = await axiosInstance.post(`/pages/${page.id}/complete`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -140,6 +155,14 @@ export default function PageViewer({
       
     } catch (error) {
       console.error('PageViewer: Failed to mark page complete:', error);
+      
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        localStorage.removeItem("AuthToken");
+        localStorage.removeItem("role");
+        navigate("/login");
+        return;
+      }
+      
       alert('Gagal menandai halaman selesai: ' + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
@@ -163,13 +186,13 @@ export default function PageViewer({
           setLoading(true);
           console.log('PageViewer: Auto-completing page before navigation');
           
-          const response = await api.post(`/pages/${page.id}/complete`, {}, {
+          const response = await axiosInstance.post(`/pages/${page.id}/complete`, {}, {
             headers: { Authorization: `Bearer ${token}` }
           });
           
           console.log('PageViewer: Auto-complete response:', response.data);
           
-          const freshProgressRes = await api.get(`/progress/unit?modul=${modul}&unit_number=${unit}`, {
+          const freshProgressRes = await axiosInstance.get(`/progress/unit?modul=${modul}&unit_number=${unit}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           
@@ -186,6 +209,14 @@ export default function PageViewer({
           
         } catch (error) {
           console.error('PageViewer: Failed to auto-complete page:', error);
+          
+          if (axios.isAxiosError(error) && error.response?.status === 401) {
+            localStorage.removeItem("AuthToken");
+            localStorage.removeItem("role");
+            navigate("/login");
+            return;
+          }
+          
           alert('Gagal menyelesaikan halaman: ' + (error.response?.data?.message || error.message));
         } finally {
           setLoading(false);
@@ -198,7 +229,7 @@ export default function PageViewer({
       try {
         console.log('PageViewer: Fetching fresh progress for completed page navigation');
         
-        const freshProgressRes = await api.get(`/progress/unit?modul=${modul}&unit_number=${unit}`, {
+        const freshProgressRes = await axiosInstance.get(`/progress/unit?modul=${modul}&unit_number=${unit}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -214,6 +245,13 @@ export default function PageViewer({
         
       } catch (error) {
         console.error('PageViewer: Failed to fetch fresh progress:', error);
+        if (axios.isAxiosError(error) && error.response?.status === 401) {
+          localStorage.removeItem("AuthToken");
+          localStorage.removeItem("role");
+          navigate("/login");
+          return;
+        }
+        
         if (onNext) onNext();
       }
     } else {
@@ -379,7 +417,7 @@ export default function PageViewer({
       }}>
         {/* SIDEBAR - DENGAN QUIZ BUTTON */}
         <div style={{
-          width: "80px",
+          width: "90px",
           backgroundColor: "#f8f9fa",
           border: "1px solid #dee2e6",
           borderRadius: "4px",
@@ -391,7 +429,7 @@ export default function PageViewer({
             color: "#495057",
             fontSize: "0.8rem"
           }}>
-            Pages
+            Halaman
           </h4>
           <div style={{ marginBottom: "0.5rem", height: "1px", backgroundColor: "#dee2e6" }}></div>
           <div style={{
@@ -425,11 +463,11 @@ export default function PageViewer({
                 }}
                 title={
                   role === 'peserta' && !progressData.can_access_quiz ? 
-                  'Complete all pages first' : 
-                  `Quiz Unit ${unit}`
+                  'Selesaikan semua halaman terlebih dahulu' : 
+                  `Latihan Unit ${unit}`
                 }
               >
-                Quiz
+                Latihan
               </button>
             </>
           )}
@@ -467,7 +505,7 @@ export default function PageViewer({
     }}>
       {/* SIDEBAR WITH PAGES AND QUIZ BUTTON */}
       <div style={{
-        width: "80px",
+        width: "90px",
         backgroundColor: "#f8f9fa",
         border: "1px solid #dee2e6",
         borderRadius: "4px",
@@ -479,7 +517,7 @@ export default function PageViewer({
           color: "#495057",
           fontSize: "0.8rem"
         }}>
-          Pages
+          Halaman
         </h4>
         <div style={{ marginBottom: "0.5rem", height: "1px", backgroundColor: "#dee2e6" }}></div>
         
@@ -554,11 +592,11 @@ export default function PageViewer({
                 }}
                 title={
                   role === 'peserta' && !progressData.can_access_quiz ? 
-                  'Complete all pages first' : 
-                  `Quiz Unit ${unit}`
+                  'Selesaikan semua halaman terlebih dahulu' : 
+                  `Latihan Unit ${unit}`
                 }
               >
-                Quiz
+                Latihan
               </button>
             </>
           )}
@@ -593,9 +631,9 @@ export default function PageViewer({
               borderRadius: "4px",
               textAlign: "center"
             }}>
-              <strong>Sequential Learning Required</strong>
+              <strong>Pembelajaran Berurutan Diperlukan</strong>
               <div style={{ marginTop: "0.5rem", fontSize: "0.9rem" }}>
-                You must complete "{nextRequired.title}" first before accessing this page.
+                Anda harus menyelesaikan "{nextRequired.title}" terlebih dahulu sebelum mengakses halaman ini.
               </div>
             </div>
           )}
@@ -617,7 +655,7 @@ export default function PageViewer({
                   color: "#28a745",
                   fontSize: "0.9rem"
                 }}>
-                  ✓ Completed
+                  ✓ Selesai
                 </span>
               )}
             </h3>
@@ -682,9 +720,9 @@ export default function PageViewer({
               }}>
                 <div style={{ fontSize: "0.9rem", color: "#6c757d" }}>
                   {isCompleted ? (
-                    "You have completed this page"
+                    "Anda telah menyelesaikan halaman ini"
                   ) : (
-                    "You can mark this page as complete anytime"
+                    "Anda dapat menandai halaman ini selesai kapan saja"
                   )}
                 </div>
 
@@ -700,10 +738,11 @@ export default function PageViewer({
                       borderRadius: "4px",
                       cursor: "pointer",
                       fontSize: "0.9rem",
-                      fontWeight: "600"
+                      fontWeight: "600",
+                      whiteSpace: "nowrap"
                     }}
                   >
-                    {loading ? "Marking..." : "Mark Complete"}
+                    {loading ? "Menandai..." : "Tandai Selesai"}
                   </button>
                 )}
               </div>

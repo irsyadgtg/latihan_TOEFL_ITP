@@ -1,5 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import api from '../../services/api';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useDashboardLayoutContext } from "../../layouts/DashboardLayout";
+import axiosInstance from "../../services/axios";
+import axios, { AxiosError } from "axios";
 
 export default function QuizViewer({ 
   modul, 
@@ -11,6 +14,8 @@ export default function QuizViewer({
   currentPageId,
   onPageSelect 
 }) {
+  const { setTitle, setSubtitle } = useDashboardLayoutContext();
+    
   const [questions, setQuestions] = useState([]);
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -50,7 +55,7 @@ export default function QuizViewer({
     }
 
     try {
-      const response = await api.get(`/progress/unit?modul=${modul}&unit_number=${unit}`, {
+      const response = await axiosInstance.get(`/progress/unit?modul=${modul}&unit_number=${unit}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -62,6 +67,12 @@ export default function QuizViewer({
 
     } catch (err) {
       console.error('Failed to fetch progress data:', err);
+      if (err.response?.status === 401) {
+          localStorage.removeItem("AuthToken");
+          localStorage.removeItem("role");
+          navigate("/login");
+          return;
+        }
       setProgressData({ can_access_quiz: false, completed_pages: [], next_required_page: null });
       setError("Failed to verify quiz access");
     }
@@ -183,7 +194,7 @@ export default function QuizViewer({
     try {
       setError("");
       
-      const res = await api.get(`/questions?modul=${modul}&unit_number=${unit}`, {
+      const res = await axiosInstance.get(`/questions?modul=${modul}&unit_number=${unit}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -209,18 +220,30 @@ export default function QuizViewer({
 
       if (role === 'peserta' && questionsData.length > 0) {
         try {
-          const jawab = await api.get(`/quiz/answers?modul=${modul}&unit_number=${unit}`, {
+          const jawab = await axiosInstance.get(`/quiz/answers?modul=${modul}&unit_number=${unit}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           setResult(jawab.data.length > 0 ? jawab.data : null);
         } catch (answerError) {
           console.log('No existing answers found');
+          if (err.response?.status === 401) {
+          localStorage.removeItem("AuthToken");
+          localStorage.removeItem("role");
+          navigate("/login");
+          return;
+        }
           setResult(null);
         }
       }
       
     } catch (err) {
       console.error('Fetch questions error:', err);
+      if (err.response?.status === 401) {
+          localStorage.removeItem("AuthToken");
+          localStorage.removeItem("role");
+          navigate("/login");
+          return;
+        }
       
       if (err.response?.status === 403) {
         setError('Akses ditolak ke unit ini. ' + (err.response?.data?.message || 'Unit belum terbuka untuk Anda.'));
@@ -298,14 +321,14 @@ export default function QuizViewer({
       }
 
       if (formMode === 'edit') {
-        await api.post(`/questions/${editingId}?_method=PUT`, formData, {
+        await axiosInstance.post(`/questions/${editingId}?_method=PUT`, formData, {
           headers: { 
             Authorization: `Bearer ${token}`,
             'Content-Type': 'multipart/form-data' 
           }
         });
       } else {
-        await api.post('/questions', formData, {
+        await axiosInstance.post('/questions', formData, {
           headers: { 
             Authorization: `Bearer ${token}`,
             'Content-Type': 'multipart/form-data' 
@@ -318,6 +341,12 @@ export default function QuizViewer({
     } catch (err) {
       setError('Gagal menyimpan: ' + (err.response?.data?.message || err.message));
       console.error(err);
+      if (err.response?.status === 401) {
+        localStorage.removeItem("AuthToken");
+        localStorage.removeItem("role");
+        navigate("/login");
+        return;
+      }
     } finally {
       setLoading(false);
     }
@@ -348,7 +377,7 @@ export default function QuizViewer({
     setLoading(true);
     setError("");
     try {
-      await api.delete(`/questions/${id}`, {
+      await axiosInstance.delete(`/questions/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       await fetchQuestions();
@@ -394,13 +423,13 @@ export default function QuizViewer({
         }))
       };
 
-      const res = await api.post('/quiz/submit', payload, {
+      const res = await axiosInstance.post('/quiz/submit', payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       setResult(res.data.results);
     } catch (err) {
-      alert('Gagal submit quiz: ' + (err.response?.data?.message || err.message));
+      alert('Gagal submit latihan: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -539,7 +568,7 @@ export default function QuizViewer({
         
         {pageList && pageList.length > 0 && (
           <div style={{
-            width: "80px",
+            width: "90px",
             backgroundColor: "white",
             border: "1px solid #e9ecef",
             borderRadius: "8px",
@@ -561,22 +590,7 @@ export default function QuizViewer({
               }}>
                 Pages
               </h4>
-              {onBackToPages && (
-                <button
-                  onClick={onBackToPages}
-                  style={{
-                    backgroundColor: "#6c757d",
-                    color: "white",
-                    border: "none",
-                    padding: "0.25rem 0.5rem",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    fontSize: "0.7rem"
-                  }}
-                >
-                  ←
-                </button>
-              )}
+              
             </div>
             <div style={{ marginBottom: "0.5rem", height: "1px", backgroundColor: "#dee2e6" }}></div>
             <div style={{
@@ -621,7 +635,7 @@ export default function QuizViewer({
                 fontSize: "0.8rem",
                 fontWeight: "600"
               }}>
-                Quiz
+                Latihan
               </div>
             </div>
           </div>
@@ -640,7 +654,7 @@ export default function QuizViewer({
             color: "#856404",
             fontWeight: "600"
           }}>
-            Quiz Access Restricted
+            Akses Latihan Dibatasi
           </h3>
           <p style={{ 
             margin: "0 0 1.5rem 0", 
@@ -648,7 +662,7 @@ export default function QuizViewer({
             fontSize: "1rem",
             lineHeight: "1.5"
           }}>
-            You must complete all pages in this unit before accessing the quiz.
+            Selesaikan seluruh materi di unit ini untuk mengakses latihan.
           </p>
           
           {progressData.next_required_page && (
@@ -720,7 +734,7 @@ export default function QuizViewer({
       
       {pageList && pageList.length > 0 && (
         <div style={{
-          width: "80px",
+          width: "90px",
           backgroundColor: "white",
           border: "1px solid #e9ecef",
           borderRadius: "8px",
@@ -742,22 +756,7 @@ export default function QuizViewer({
             }}>
               Pages
             </h4>
-            {onBackToPages && (
-              <button
-                onClick={onBackToPages}
-                style={{
-                  backgroundColor: "#6c757d",
-                  color: "white",
-                  border: "none",
-                  padding: "0.25rem 0.5rem",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontSize: "0.7rem"
-                }}
-              >
-                ←
-              </button>
-            )}
+            
           </div>
           <div style={{ marginBottom: "0.5rem", height: "1px", backgroundColor: "#dee2e6" }}></div>
           <div style={{
@@ -802,7 +801,7 @@ export default function QuizViewer({
               fontSize: "0.8rem",
               fontWeight: "600"
             }}>
-              Quiz
+              Latihan
             </div>
           </div>
         </div>
@@ -859,7 +858,7 @@ export default function QuizViewer({
               fontSize: "1.25rem",
               fontWeight: "600"
             }}>
-              Quiz Unit {unit}
+              Latihan Unit {unit}
             </h3>
             <div style={{ 
               marginTop: "0.5rem", 
@@ -899,7 +898,7 @@ export default function QuizViewer({
                     fontWeight: "600"
                   }}
                 >
-                  + Tambah Soal Quiz
+                  + Tambah Soal Latihan
                 </button>
               </div>
 
@@ -913,7 +912,7 @@ export default function QuizViewer({
                   borderRadius: "8px",
                   border: "1px solid #e9ecef"
                 }}>
-                  Belum ada soal quiz. Silakan tambah soal baru.
+                  Belum ada soal Latihan. Silakan tambah soal baru.
                 </div>
               ) : (
                 <div style={{ 
@@ -1187,10 +1186,10 @@ export default function QuizViewer({
                         }}
                         title={Object.keys(answers).length < questions.length ? 
                           `Jawab semua soal (${Object.keys(answers).length}/${questions.length})` : 
-                          "Submit quiz"
+                          "Submit Latihan"
                         }
                       >
-                        Selesai Quiz
+                        Selesaikan Latihan
                       </button>
                     ) : (
                       <button 
@@ -1232,7 +1231,7 @@ export default function QuizViewer({
                       fontSize: "1.5rem",
                       fontWeight: "600"
                     }}>
-                      Hasil Quiz
+                      Hasil Latihan
                     </h3>
                     
                     <div style={{
@@ -1493,7 +1492,7 @@ export default function QuizViewer({
                 marginBottom: "1rem",
                 fontWeight: "600"
               }}>
-                {formMode === 'edit' ? 'Edit' : 'Tambah'} Soal Quiz
+                {formMode === 'edit' ? 'Edit' : 'Tambah'} Soal Latihan
               </h3>
 
               <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../services/api';
 
+import axiosInstance from '../../services/axios';
+import axios from 'axios';
 
 export default function DetailLaporan() {
   const [reportData, setReportData] = useState(null);
@@ -24,7 +25,7 @@ export default function DetailLaporan() {
 
   const loadDetailedReport = async () => {
     try {
-      const res = await api.get('/laporan/detail', {
+      const res = await axiosInstance.get('/laporan/detail', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setReportData(res.data);
@@ -125,7 +126,7 @@ export default function DetailLaporan() {
         </p>
         <div>
           <button 
-            onClick={() => navigate('/laporan-pembelajaran')}
+            onClick={() => navigate('/student/laporan-pembelajaran')}
             style={{
               backgroundColor: '#B6252A',
               color: 'white',
@@ -140,7 +141,7 @@ export default function DetailLaporan() {
             Cek Progress
           </button>
           <button 
-            onClick={() => navigate('/materi')}
+            onClick={() => navigate('/student/materi')}
             style={{
               backgroundColor: '#28a745',
               color: 'white',
@@ -680,7 +681,7 @@ export default function DetailLaporan() {
             Aksi Lanjutan
           </h3>
           <button 
-            onClick={() => navigate('/laporan-pembelajaran')}
+            onClick={() => navigate('/student/laporan-pembelajaran')}
             style={{
               backgroundColor: '#6c757d',
               color: 'white',
@@ -697,7 +698,7 @@ export default function DetailLaporan() {
           </button>
           
           <button 
-            onClick={() => navigate('/simulasi/hasil')}
+            onClick={() => navigate('/student/simulasi/hasil')}
             style={{
               backgroundColor: '#28a745',
               color: 'white',

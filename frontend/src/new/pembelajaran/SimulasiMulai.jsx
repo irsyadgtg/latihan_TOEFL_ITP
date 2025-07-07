@@ -1,8 +1,15 @@
 import React, { useEffect, useState, useRef } from "react";
 import Timer from "./Timer";
-import api from "../shared/services/api";
+import axiosInstance from "../../services/axios";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import Confirm from "../shared/components/Confirm";
 
 export default function SimulasiMulai() {
+  //modal konfirm next
+  const [showUnansweredModal, setShowUnansweredModal] = useState(false);
+  const [unansweredCount, setUnansweredCount] = useState(0);
+
   const [questionGroups, setQuestionGroups] = useState([]);
   const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -17,11 +24,19 @@ export default function SimulasiMulai() {
 
   const token = localStorage.getItem("token");
 
+  const navigate = useNavigate();
+
+  // Role detection untuk dynamic paths
+  const getCurrentRole = () => localStorage.getItem("role");
+  const getBasePath = () =>
+    getCurrentRole() === "instruktur" ? "/instructor" : "/student";
+
   const SECTION_NAMES = {
     listening: "Listening Comprehension",
     structure: "Structure and Written Expression",
     reading: "Reading Comprehension",
   };
+  const scrollableRef = useRef(null);
 
   // FIX RELOAD: Auto-resume incomplete simulation saat component mount
   useEffect(() => {
@@ -35,7 +50,7 @@ export default function SimulasiMulai() {
       console.log("Checking simulation eligibility...");
 
       // Check eligibility dan incomplete simulation
-      const eligibilityRes = await api.get(
+      const eligibilityRes = await axiosInstance.get(
         "/simulations/eligibility?simulation_set_id=1",
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -44,7 +59,7 @@ export default function SimulasiMulai() {
 
       if (!eligibilityRes.data.eligible) {
         alert(eligibilityRes.data.reason || eligibilityRes.data.message);
-        window.location.href = "/simulasi";
+        window.location.href = `${getBasePath()}/simulasi`;
         return;
       }
 
@@ -60,26 +75,10 @@ export default function SimulasiMulai() {
       }
 
       // NEW SIMULATION: Confirm start jika simulasi baru
-      const confirmed = window.confirm(
-        "Apakah Anda yakin ingin memulai simulasi TOEFL ITP sekarang?\n\n" +
-          "PERHATIAN:\n" +
-          "- Simulasi hanya bisa dikerjakan 1x\n" +
-          "- Tidak bisa pause atau kembali ke soal sebelumnya\n" +
-          "- Urutan: Listening → Structure → Reading\n" +
-          "- Audio listening hanya diputar 1x otomatis\n" +
-          "- Total waktu: ±115 menit\n" +
-          "- Timer akan tetap berjalan meski Anda pindah tab/refresh halaman\n" +
-          "- Jika waktu habis, section akan otomatis disubmit"
-      );
-
-      if (!confirmed) {
-        window.location.href = "/simulasi";
-        return;
-      }
 
       // Start simulation baru
       console.log("Starting new simulation...");
-      const startRes = await api.post(
+      const startRes = await axiosInstance.post(
         "/simulations/start",
         { simulation_set_id: 1 },
         {
@@ -100,7 +99,7 @@ export default function SimulasiMulai() {
           "Akses simulasi tidak diizinkan: " +
             (err.response?.data?.error || "Paket tidak mendukung simulasi")
         );
-        window.location.href = "/simulasi";
+        window.location.href = `${getBasePath()}/simulasi`;
         return;
       }
 
@@ -110,7 +109,7 @@ export default function SimulasiMulai() {
             err.response?.data?.message ||
             err.message)
       );
-      window.location.href = "/simulasi";
+      window.location.href = "${getBasePath()}/simulasi";
     }
   };
 
@@ -121,7 +120,7 @@ export default function SimulasiMulai() {
       setLoading(true);
       console.log("Loading questions for simulation:", simId);
 
-      const res = await api.get(`/simulations/${simId}/questions`, {
+      const res = await axiosInstance.get(`/simulations/${simId}/questions`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -143,7 +142,7 @@ export default function SimulasiMulai() {
 
       try {
         console.log("Loading existing answers...");
-        const answersRes = await api.get(
+        const answersRes = await axiosInstance.get(
           `/simulations/${simId}/existing-answers`,
           {
             headers: { Authorization: `Bearer ${token}` },
@@ -195,12 +194,12 @@ export default function SimulasiMulai() {
           "Akses simulasi tidak diizinkan: " +
             (err.response?.data?.error || "Paket tidak mendukung simulasi")
         );
-        window.location.href = "/simulasi";
+        window.location.href = `${getBasePath()}/simulasi`;
         return;
       }
 
       alert("Gagal memuat soal");
-      window.location.href = "/simulasi";
+      window.location.href = `${getBasePath()}/simulasi`;
 
       setLoading(false);
     }
@@ -360,7 +359,8 @@ export default function SimulasiMulai() {
       (q) => !answers[q.id]
     );
     if (unansweredInGroup.length > 0) {
-      alert(`Masih ada ${unansweredInGroup.length} soal yang belum dijawab!`);
+      setUnansweredCount(unansweredInGroup.length);
+      setShowUnansweredModal(true);
       return;
     }
 
@@ -378,7 +378,7 @@ export default function SimulasiMulai() {
         question_ids: groupAnswers.map((a) => a.question_id),
       });
 
-      const response = await api.post(
+      const response = await axiosInstance.post(
         "/simulations/submit-question",
         {
           simulation_id: simulationId,
@@ -411,8 +411,9 @@ export default function SimulasiMulai() {
           document.body.scrollTop = 0;
 
           // Method 2: Ref scroll (jika ada)
-          if (contentRef.current) {
-            contentRef.current.scrollTop = 0;
+          if (scrollableRef.current) {
+            scrollableRef.current.scrollTop = 0;
+            scrollableRef.current.scrollTo({ top: 0, behavior: "auto" });
           }
 
           console.log("📜 Forced scroll completed");
@@ -438,7 +439,7 @@ export default function SimulasiMulai() {
           "Akses simulasi tidak diizinkan: " +
             (err.response?.data?.error || "Paket tidak mendukung simulasi")
         );
-        window.location.href = "/simulasi";
+        window.location.href = `${getBasePath()}/simulasi`;
         return;
       }
 
@@ -467,25 +468,18 @@ export default function SimulasiMulai() {
   };
 
   const handleSubmitSection = () => {
+    // PRIORITAS 1: CEK SOAL BELUM DIJAWAB DULU
     const allQuestions = questionGroups.flatMap((group) => group.questions);
     const unansweredCount = allQuestions.filter((q) => !answers[q.id]).length;
 
     if (unansweredCount > 0) {
-      const confirmed = window.confirm(
-        `Masih ada ${unansweredCount} soal yang belum dijawab.\n\n` +
-          `Yakin ingin menyelesaikan section ${SECTION_NAMES[currentSection]}?\n` +
-          "Section yang sudah disubmit tidak bisa diubah lagi."
-      );
-      if (!confirmed) return;
-    } else {
-      const confirmed = window.confirm(
-        `Yakin ingin menyelesaikan section ${SECTION_NAMES[currentSection]}?\n` +
-          "Section yang sudah disubmit tidak bisa diubah lagi."
-      );
-      if (!confirmed) return;
+      // Jika ada soal belum dijawab, tampilkan modal unanswered
+      setUnansweredCount(unansweredCount);
+      setShowUnansweredModal(true);
+      return; // STOP - tidak lanjut submit
     }
 
-    // Call submitSection untuk finalisasi
+    // PRIORITAS 2: Jika semua sudah dijawab, baru submit
     submitSection(false); // Manual submit
   };
 
@@ -520,12 +514,16 @@ export default function SimulasiMulai() {
       let res;
       if (isAutoSubmit) {
         console.log("🔄 Calling auto-submit-section...");
-        res = await api.post("/simulations/auto-submit-section", payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        res = await axiosInstance.post(
+          "/simulations/auto-submit-section",
+          payload,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
       } else {
         console.log("🔄 Calling submit-section...");
-        res = await api.post("/simulations/submit-section", payload, {
+        res = await axiosInstance.post("/simulations/submit-section", payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
       }
@@ -540,9 +538,9 @@ export default function SimulasiMulai() {
         const message = isAutoSubmit
           ? "Simulasi selesai karena waktu habis! Anda akan diarahkan ke hasil."
           : "Simulasi selesai! Anda akan diarahkan ke hasil.";
-        console.log("🏁 Simulation completed, redirecting...");
-        alert(message);
-        window.location.href = `/simulasi/hasil/${simulationId}`;
+        console.log(" Simulation completed, redirecting...");
+        console.log(" Simulation completed, redirecting...");
+        window.location.href = `${getBasePath()}/simulasi/hasil/${simulationId}`;
       } else {
         const nextSectionName =
           SECTION_NAMES[res.data.next_section] || res.data.next_section;
@@ -556,7 +554,7 @@ export default function SimulasiMulai() {
           nextSectionName,
         });
 
-        alert(message);
+        console.log("🔄 Section completed, loading next section...");
 
         console.log("🔄 Loading questions for next section...");
 
@@ -585,7 +583,7 @@ export default function SimulasiMulai() {
           "Akses simulasi tidak diizinkan: " +
             (err.response?.data?.error || "Paket tidak mendukung simulasi")
         );
-        window.location.href = "/simulasi";
+        window.location.href = `${getBasePath()}/simulasi`;
         return;
       }
 
@@ -726,6 +724,7 @@ export default function SimulasiMulai() {
 
       {/* Scrollable Content */}
       <div
+        ref={scrollableRef} // ← TAMBAH REF BARU
         style={{
           flex: 1,
           overflow: "auto",
@@ -1132,7 +1131,82 @@ export default function SimulasiMulai() {
           </span>
         </div>
 
-        {currentGroupIndex < questionGroups.length - 1 ? (
+        {currentGroupIndex >= questionGroups.length - 1 ? (
+          (() => {
+            // Cek apakah semua soal sudah dijawab
+            const allQuestions = questionGroups.flatMap(
+              (group) => group.questions
+            );
+            const unansweredCount = allQuestions.filter(
+              (q) => !answers[q.id]
+            ).length;
+
+            if (unansweredCount > 0) {
+              // Jika ada soal belum dijawab, tampilkan tombol biasa (tidak wrapped Confirm)
+              return (
+                <button
+                  onClick={() => {
+                    setUnansweredCount(unansweredCount);
+                    setShowUnansweredModal(true);
+                  }}
+                  disabled={isSubmitting}
+                  style={{
+                    padding: "0.75rem 1.5rem",
+                    backgroundColor: isSubmitting ? "#6c757d" : "#dc3545", // Red untuk warning
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: isSubmitting ? "not-allowed" : "pointer",
+                    fontWeight: "bold",
+                    fontSize: "14px",
+                    fontFamily: "Poppins, sans-serif",
+                    opacity: isSubmitting ? 0.7 : 1,
+                    transition: "all 0.3s ease",
+                  }}
+                >
+                  {isSubmitting ? "MENYIMPAN..." : "COMPLETE SECTION"}
+                </button>
+              );
+            } else {
+              // Jika semua sudah dijawab, tampilkan dengan Confirm
+              return (
+                <Confirm
+                  title={`Lanjut ke ${(() => {
+                    if (currentSection === "listening") return "Structure?";
+                    if (currentSection === "structure") return "Reading?";
+                    return "hasil?";
+                  })()}`}
+                  description={`Yakin ingin menyelesaikan section ${SECTION_NAMES[currentSection]}? Section yang sudah disubmit tidak bisa diubah lagi.`}
+                  confirmText="KONFIRMASI"
+                  confirmButtonType="primary"
+                  onConfirm={async () => {
+                    await handleSubmitSection();
+                  }}
+                >
+                  <button
+                    disabled={isSubmitting}
+                    style={{
+                      padding: "0.75rem 1.5rem",
+                      backgroundColor: isSubmitting ? "#6c757d" : "#28a745",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: isSubmitting ? "not-allowed" : "pointer",
+                      fontWeight: "bold",
+                      fontSize: "14px",
+                      fontFamily: "Poppins, sans-serif",
+                      opacity: isSubmitting ? 0.7 : 1,
+                      transition: "all 0.3s ease",
+                    }}
+                  >
+                    {isSubmitting ? "MENYIMPAN..." : "COMPLETE SECTION"}
+                  </button>
+                </Confirm>
+              );
+            }
+          })()
+        ) : (
+          // Tombol NEXT biasa
           <button
             onClick={handleNext}
             disabled={isSubmitting}
@@ -1152,28 +1226,32 @@ export default function SimulasiMulai() {
           >
             {isSubmitting ? "MENYIMPAN..." : "NEXT"}
           </button>
-        ) : (
-          <button
-            onClick={handleSubmitSection}
-            disabled={isSubmitting}
-            style={{
-              padding: "0.75rem 1.5rem",
-              backgroundColor: isSubmitting ? "#6c757d" : "#28a745",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: isSubmitting ? "not-allowed" : "pointer",
-              fontWeight: "bold",
-              fontSize: "14px",
-              fontFamily: "Poppins, sans-serif",
-              opacity: isSubmitting ? 0.7 : 1,
-              transition: "all 0.3s ease",
-            }}
-          >
-            {isSubmitting ? "MENYIMPAN..." : "COMPLETE SECTION"}
-          </button>
         )}
       </div>
+      {showUnansweredModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-6">
+            <div className="text-center mb-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Masih ada soal yang belum terjawab
+              </h3>
+              <div className="text-gray-600">
+                {unansweredCount} soal masih perlu dijawab sebelum melanjutkan.
+              </div>
+            </div>
+
+            <div className="flex justify-center">
+              <button
+                onClick={() => setShowUnansweredModal(false)}
+                className="px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-blue-600 
+                     transition-colors font-medium"
+              >
+                Kembali
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

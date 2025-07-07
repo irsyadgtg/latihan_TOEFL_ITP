@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import api from '../shared/services/api';
+
+import axiosInstance from "../../services/axios";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 export default function Timer({ 
   timeLimit, // in minutes from backend
@@ -54,7 +57,7 @@ export default function Timer({
       console.log('🔄 Loading timer state from backend...');
       
       // Load timer state dari backend
-      const response = await api.get(`/simulations/${simulationId}/timer-state`, {
+      const response = await axiosInstance.get(`/simulations/${simulationId}/timer-state`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -156,6 +159,12 @@ export default function Timer({
     } catch (error) {
       console.error('❌ Failed to load timer from backend:', error.response?.status, error.response?.data);
       
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        localStorage.removeItem("AuthToken");
+        localStorage.removeItem("role");
+        navigate("/login");
+        return;
+      }
       // If backend error, start fresh timer
       console.log('🆕 Backend error, starting fresh timer');
       startFreshTimer();
@@ -231,7 +240,7 @@ export default function Timer({
       try {
         console.log('🔄 Syncing timer to backend:', elapsed);
         
-        const response = await api.post('/simulations/sync-timer', {
+        const response = await axiosInstance.post('/simulations/sync-timer', {
           simulation_id: simulationId,
           time_spent: elapsed
         }, {
@@ -246,6 +255,13 @@ export default function Timer({
         }
       } catch (error) {
         console.error('❌ Failed to sync timer:', error.response?.status, error.response?.data);
+        
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        localStorage.removeItem("AuthToken");
+        localStorage.removeItem("role");
+        navigate("/login");
+        return;
+      }
       }
     }, 15000); // 15 seconds
 
@@ -263,7 +279,7 @@ export default function Timer({
         const elapsed = Math.floor((Date.now() - sectionStartTimeRef.current) / 1000);
         
         try {
-          const response = await api.post('/simulations/sync-timer', {
+          const response = await axiosInstance.post('/simulations/sync-timer', {
             simulation_id: simulationId,
             time_spent: elapsed
           }, {
@@ -274,6 +290,13 @@ export default function Timer({
           console.log('✅ State saved on hide:', elapsed);
         } catch (error) {
           console.error('❌ Failed to save on hide:', error.response?.status, error.response?.data);
+          
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        localStorage.removeItem("AuthToken");
+        localStorage.removeItem("role");
+        navigate("/login");
+        return;
+      }
         }
       } else {
         // Page visible - timer continues running, no need to reload
@@ -301,7 +324,7 @@ export default function Timer({
         time_spent: elapsed
       });
 
-      fetch(`${api.defaults.baseURL}/simulations/sync-timer`, {
+      fetch(`${axiosInstance.defaults.baseURL}/simulations/sync-timer`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -313,6 +336,13 @@ export default function Timer({
         console.log('✅ Timer saved on unload:', elapsed);
       }).catch(err => {
         console.error('❌ Failed to save on unload:', err);
+        
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        localStorage.removeItem("AuthToken");
+        localStorage.removeItem("role");
+        navigate("/login");
+        return;
+      }
       });
     };
 
