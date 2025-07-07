@@ -85,9 +85,14 @@ const SubscribePage: React.FC = () => {
     return `${months} Bulan`;
   };
 
+  // --- PERBAIKAN PENTING DI SINI ---
   const handlePackageClick = (packageId: number) => {
-    navigate(`/student/langganan/form?packageId=${packageId}`);
+    // Mengubah navigasi agar menggunakan PATH PARAMETER, bukan query parameter
+    // Ini akan menghasilkan URL seperti: /student/langganan/form/3
+    navigate(`/student/langganan/form/${packageId}`);
+    console.log(`Navigasi ke: /student/langganan/form/${packageId}`); // Log untuk verifikasi
   };
+  // ---------------------------------
 
   // --- Render Kondisional ---
   if (loading) {
@@ -131,7 +136,7 @@ const SubscribePage: React.FC = () => {
                 date={""} // <-- Diubah menjadi string kosong untuk menghilangkan teks hitam
                 label={formatMasaBerlaku(pkg.masaBerlaku)} // Tetap menggunakan fungsi format untuk label pink
                 isBeli={!isFreePackage && pkg.aktif}
-                onClick={() => handlePackageClick(pkg.idPaketKursus)}
+                onClick={() => handlePackageClick(pkg.idPaketKursus)} // Memanggil fungsi yang sudah diperbaiki
               />
             );
           })}

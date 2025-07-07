@@ -52,6 +52,7 @@ import TinjauRencanaBelajar from "../pages/instructor/TinjauRencanaBelajar";
 import DetailRencanaBelajar from '../pages/instructor/DetailRencanaBelajar';
 import { StudyPlanProvider } from '../contexts/StudyPlanContext';
 import { adminNavigation, instructorNavigation, studentNavigation } from "../assets/data/navigasi";
+import StudyPlanFeedbackDetail from "../pages/students/StudentPlanFeedback";
 
 const AppRouter = () => {
   return (
@@ -114,10 +115,10 @@ const AppRouter = () => {
           <Route path="awal/create" element={<CreateInitialScore />} />
           <Route path="rencana" element={<StudyPlanSubmission />} />
           <Route path="rencana/detail/:id" element={<StudyPlanSubmissionDetail />} />
-          <Route path="rencana/detail/:id/feedback" element={<StudentFeedback />} />
+          <Route path="rencana/detail/:id/feedback" element={<StudyPlanFeedbackDetail />} />
           <Route path="rencana/create" element={<StudyPlanSubmissionCreate />} />
           <Route path="langganan" element={<SubscribePage />} />
-          <Route path="langganan/form" element={<SubscribeForm />} />
+          <Route path="langganan/form/:id" element={<SubscribeForm />} />
           <Route path="langganan/riwayat" element={<SubscribeHistory />} />
           <Route path="pembayaran" element={<SubscribeHistory />} /> {/* Ini mungkin duplikat dengan langganan/riwayat */}
 

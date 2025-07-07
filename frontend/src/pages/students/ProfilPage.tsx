@@ -1,3 +1,4 @@
+// src/pages/student/ProfilPage.tsx (Saya mengasumsikan nama file ini adalah ProfilPage.tsx dari AppRouter Anda)
 import React, { useState, useEffect, ChangeEvent } from "react";
 import { FaEdit } from "react-icons/fa";
 
@@ -7,22 +8,24 @@ import axios, { AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 
 // --- Definisikan interface untuk struktur data profil PESERTA dari API (SESUAI BACKEND) ---
+// Pastikan nama properti di sini cocok persis dengan NAMA FIELD JSON yang dikembalikan backend.
+// Jika backend menggunakan camelCase di model tapi mengembalikan snake_case di JSON,
+// maka sesuaikan interface ini (misal: nama_lengkap, nomor_telepon, url_foto_profil, paket_kursus, sisa_masa_berlaku)
 interface StudentProfileAPIResponse {
     username: string;
     email: string;
-    namaLengkap: string;
+    namaLengkap: string; 
     nik: string;
-    nomorTelepon: string | null;
+    nomorTelepon: string | null; 
     alamat: string | null;
-    urlFotoProfil?: string | null;
+    urlFotoProfil?: string | null; 
 
-    // Pastikan nama field ini sama persis dengan yang dikembalikan backend
-    // jika 'paketKursus' adalah string, ini OK. Jika objek, interface perlu disesuaikan.
+    // Properti ini sekarang akan aman dari null berkat perbaikan di backend
     paketKursus: string | null; 
     sisaMasaBerlaku: number | null;
 }
 
-export default function ProfilPeserta() { // Ubah nama fungsi komponen agar unik
+export default function ProfilPeserta() { 
     const { setTitle, setSubtitle } = useDashboardLayoutContext();
     const navigate = useNavigate();
 
@@ -51,7 +54,7 @@ export default function ProfilPeserta() { // Ubah nama fungsi komponen agar unik
         setTitle("Profil Saya");
         setSubtitle("Isikan profil pengguna Anda");
         fetchProfile();
-    }, [setTitle, setSubtitle, navigate]);
+    }, [setTitle, setSubtitle, navigate]); 
 
     const fetchProfile = async () => {
         setLoading(true);
@@ -60,6 +63,7 @@ export default function ProfilPeserta() { // Ubah nama fungsi komponen agar unik
         try {
             const response = await axiosInstance.get<StudentProfileAPIResponse>('/profil/peserta');
             const data = response.data;
+            console.log("Data profil diterima dari backend:", data); // LOG PENTING UNTUK DEBUGGING
 
             setProfileData({
                 fullName: data.namaLengkap || '',
@@ -67,9 +71,10 @@ export default function ProfilPeserta() { // Ubah nama fungsi komponen agar unik
                 email: data.email || '',
                 nik: data.nik || '',
                 address: data.alamat || '',
-                phone: data.nomorTelepon || '',
+                phone: data.nomorTelepon || '', 
             });
 
+            // Penanganan paketKursus dan sisaMasaBerlaku yang sudah lebih aman karena backend diperbaiki
             if (data.paketKursus) {
                 setDisplayPaketKursus(data.paketKursus);
                 if (typeof data.sisaMasaBerlaku === 'number' && data.sisaMasaBerlaku >= 0) {
@@ -77,7 +82,7 @@ export default function ProfilPeserta() { // Ubah nama fungsi komponen agar unik
                 } else if (typeof data.sisaMasaBerlaku === 'number' && data.sisaMasaBerlaku < 0) {
                     setDisplaySisaMasaBerlaku("Telah berakhir");
                 } else {
-                    setDisplaySisaMasaBerlaku("-");
+                    setDisplaySisaMasaBerlaku("-"); 
                 }
             } else {
                 setDisplayPaketKursus("Belum ada");
@@ -87,14 +92,15 @@ export default function ProfilPeserta() { // Ubah nama fungsi komponen agar unik
             setPhotoPreview(data.urlFotoProfil || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.namaLengkap || 'Peserta')}&background=random`);
 
         } catch (err) {
-            console.error("Failed to fetch student profile:", err);
+            console.error("Gagal mengambil profil peserta:", err);
             if (axios.isAxiosError(err)) {
                 if (err.response) {
+                    console.error("Respons error Axios:", err.response.status, err.response.data); 
                     if (err.response.status === 401) {
                         setError("Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.");
                         localStorage.removeItem('AuthToken');
                         localStorage.removeItem('userData');
-                        navigate('/login'); // Sesuaikan path login peserta
+                        navigate('/login'); 
                     } else if (err.response.status === 403) {
                         setError("Anda tidak memiliki izin untuk melihat profil ini.");
                     } else if (err.response.data && typeof err.response.data === 'object' && 'message' in err.response.data) {
@@ -143,15 +149,13 @@ export default function ProfilPeserta() { // Ubah nama fungsi komponen agar unik
             const formData = new FormData();
             formData.append("namaLengkap", profileData.fullName);
             formData.append("username", profileData.username);
-            // Email tidak perlu dikirim jika tidak bisa diedit
             formData.append("nik", profileData.nik);
             formData.append("alamat", profileData.address);
             formData.append("nomorTelepon", profileData.phone);
 
             if (photoFile) {
-                formData.append("foto", photoFile); // Konfirmasi nama field 'foto' dengan backend
+                formData.append("foto", photoFile); 
             }
-
 
             try {
                 const response = await axiosInstance.post('/profil/peserta', formData, {
@@ -162,12 +166,13 @@ export default function ProfilPeserta() { // Ubah nama fungsi komponen agar unik
 
                 console.log("Profil peserta berhasil diperbarui:", response.data);
                 setSuccessMessage("Profil berhasil diperbarui!");
-                await fetchProfile();
+                await fetchProfile(); 
                 setIsEditing(false);
             } catch (err) {
                 console.error("Gagal memperbarui profil peserta:", err);
                 if (axios.isAxiosError(err)) {
                     if (err.response) {
+                        console.error("Respons error Axios saat update:", err.response.status, err.response.data);
                         if (err.response.status === 401) {
                             setError("Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.");
                             localStorage.removeItem('AuthToken');
@@ -204,10 +209,11 @@ export default function ProfilPeserta() { // Ubah nama fungsi komponen agar unik
     const inputStyles =
         'w-full mt-1 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 disabled:bg-gray-100';
 
-    if (loading && !profileData.fullName) {
+    if (loading) {
         return <div className="text-gray-600 text-center py-8">Memuat profil...</div>;
     }
-    if (!loading && error && !profileData.fullName) {
+    
+    if (error) {
         return (
             <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-md mt-4 text-center">
                 <p>{error}</p>
@@ -278,7 +284,7 @@ export default function ProfilPeserta() { // Ubah nama fungsi komponen agar unik
                         {successMessage}
                     </div>
                 )}
-                {error && !successMessage && (
+                {error && ( 
                     <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4" role="alert">
                         <p>{error}</p>
                         {(error.includes("waktu habis") || error.includes("Tidak dapat terhubung") || error.includes("Terjadi kesalahan saat mengatur permintaan")) && (
@@ -337,7 +343,7 @@ export default function ProfilPeserta() { // Ubah nama fungsi komponen agar unik
                             placeholder="Masukkan email"
                             value={profileData.email}
                             onChange={handleChange}
-                            disabled={true} // Email tidak bisa diedit via endpoint ini
+                            disabled={true} 
                             className={inputStyles}
                         />
                     </div>
