@@ -1,3 +1,4 @@
+// src/pages/student/StudyPlanSubmissionCreate.tsx
 import React, { useEffect, useRef, useState } from "react";
 import { useDashboardLayoutContext } from "../../layouts/DashboardLayout";
 import { IoArrowBackCircleOutline } from "react-icons/io5";
@@ -23,7 +24,8 @@ interface StudyPlanDetailData {
   jamPerHari: string;
   targetSkor: number;
   hariPerMinggu: number;
-  detail_pengajuan_rencana_belajar: { skill: { idSkill: number; namaSkill: string; deskripsi: string; } }[]; // Menambahkan deskripsi
+  // Menambahkan 'kategori' di sini juga, agar saat fetch detail bisa mengisi skillStatus dengan benar berdasarkan kategori
+  detail_pengajuan_rencana_belajar: { skill: { idSkill: number; namaSkill: string; deskripsi: string; kategori: string } }[];
   status: string;
   tglPengajuan: string;
 }
@@ -31,20 +33,11 @@ interface StudyPlanDetailData {
 // Interface untuk data skill dari backend (GET /peserta/skill)
 interface SkillData {
   idSkill: number;
-  kategori: string;
+  kategori: string; // Properti kunci untuk filtering
   skill: string;
-  deskripsi: string; // PENTING: Menggunakan 'deskripsi' sesuai respons backend
+  deskripsi: string;
   created_at?: string;
   updated_at?: string;
-}
-
-// Interface untuk props SkillListView
-interface SkillListViewProps {
-  label: string;
-  activeTab: string;
-  skillOptions: Record<string, SkillData[]>;
-  skillStatus: Record<number, boolean>;
-  toggleSkill: (skillId: number) => void;
 }
 
 export default function StudyPlanSubmissionCreate() {
@@ -57,7 +50,7 @@ export default function StudyPlanSubmissionCreate() {
   const [step, setStep] = useState<"structure" | "listening" | "reading">("structure");
 
   const [skillStatus, setSkillStatus] = useState<Record<string, Record<number, boolean>>>({
-    Structure: {},
+    Structure: {}, // Kunci ini adalah nama kategori yang ditampilkan di UI/kode, bukan nilai kategori dari backend
     Listening: {},
     Reading: {},
   });
@@ -87,7 +80,7 @@ export default function StudyPlanSubmissionCreate() {
       try {
         const response = await axiosInstance.get<{ data: SkillData[] }>("/peserta/skill");
         setAllSkills(response.data.data);
-        console.log("All skills fetched:", response.data.data); // Debugging
+        console.log("All skills fetched:", response.data.data); // Ini akan menunjukkan data asli dari backend
       } catch (error) {
         console.error("Failed to fetch all skills:", error);
         setGeneralError("Gagal memuat daftar skill. Mohon coba lagi.");
@@ -96,50 +89,22 @@ export default function StudyPlanSubmissionCreate() {
     fetchAllSkills();
   }, []);
 
-  // Definisikan options di sini agar bisa diakses oleh useEffect di bawahnya
+  // Definisikan options DARI allSkills menggunakan properti 'kategori'
+  // KINI MENGGUNAKAN NAMA KATEGORI YANG TEPAT DARI RESPON API
   const structureOptions: SkillData[] = allSkills.filter((skill) =>
-    [
-      "I can answer questions related to the most frequently asked noun questions in TOEFL ITP",
-      "I can answer questions related to the most frequently asked verb questions in TOEFL ITP",
-      "I can answer questions related to the most frequently asked SV agreement questions in TOEFL ITP",
-      "I can answer questions related to the most frequently asked adjective and adverb questions in TOEFL ITP",
-      "I can answer questions related to the most frequently asked pronoun questions in TOEFL ITP",
-      "I can answer questions related to the most frequently asked parallel structure questions in TOEFL ITP",
-      "I can answer questions related to the most frequently asked simple and compound sentence questions in TOEFL ITP",
-      "I can answer questions related to the most frequently asked complex sentence questions in TOEFL ITP",
-      "I can answer questions related to the most frequently asked reduce clause questions in TOEFL ITP",
-      "I can answer questions related to the most frequently asked preposition and word-choice questions in TOEFL ITP",
-    ].includes(skill.deskripsi) // <--- PENTING: Menggunakan skill.deskripsi
+    skill.kategori === "Structure and Written Expression"
   );
 
   const listeningOptions: SkillData[] = allSkills.filter((skill) =>
-    [
-      "I can identify the gist/topic of short and longer conversations",
-      "I can explain advice/suggestions given in short conversations.",
-      "I can predict what the speaker will probably do next in short conversations.",
-      "I can make use of context to understand meaning in short conversations.",
-      "I can infer unstated details of short conversations.",
-      "I can identify stated details in longer conversations.",
-      "I can identify unstated details in longer conversations.",
-      "I can identify the gist in lectures.",
-      "I can identify stated details in lectures.",
-      "I can identify unstated details in lectures.",
-    ].includes(skill.deskripsi) // <--- PENTING: Menggunakan skill.deskripsi
+    skill.kategori === "Listening Comprehension"
   );
 
   const readingOptions: SkillData[] = allSkills.filter((skill) =>
-    [
-      "I can identify the topic of the passage and main idea of a paragraph.",
-      "I can explain central information and details explicitly given in the passage.",
-      "I can find the referential relationship questions.",
-      "I can make use of context to understand literal equivalent of a word or phrase.",
-      "I can explain central information and details implicitly given in the passage.",
-      "I can analyze the organizational structure of a passage.",
-    ].includes(skill.deskripsi) // <--- PENTING: Menggunakan skill.deskripsi
+    skill.kategori === "Reading"
   );
 
   useEffect(() => {
-    // Debugging filter results
+    // Debugging filter results - ini akan menunjukkan apakah filter kategori bekerja
     console.log("Structure Options (after filter):", structureOptions);
     console.log("Listening Options (after filter):", listeningOptions);
     console.log("Reading Options (after filter):", readingOptions);
@@ -165,20 +130,18 @@ export default function StudyPlanSubmissionCreate() {
             Reading: {},
           };
 
-          // Filter skill names based on their `deskripsi` to categorize them
-          const structureSkillDescriptions = structureOptions.map((s) => s.deskripsi);
-          const listeningSkillDescriptions = listeningOptions.map((s) => s.deskripsi);
-          const readingSkillDescriptions = readingOptions.map((s) => s.deskripsi);
-
           detailData.detail_pengajuan_rencana_belajar.forEach((detail) => {
             const skillId = detail.skill.idSkill;
-            const skillDescription = detail.skill.deskripsi; // Menggunakan deskripsi dari detail
+            const skillCategory = detail.skill.kategori; // Menggunakan kategori dari detail rencana belajar
 
-            if (structureSkillDescriptions.includes(skillDescription)) {
+            // Memastikan kategori yang di-set di newSkillStatus cocok dengan yang dari backend
+            // Perhatikan bahwa kunci di newSkillStatus (Structure, Listening, Reading) adalah string yang kita definisikan di frontend untuk memudahkan grouping,
+            // dan perlu dipetakan ke nilai kategori yang sebenarnya dari backend.
+            if (skillCategory === "Structure and Written Expression") {
               newSkillStatus.Structure[skillId] = true;
-            } else if (listeningSkillDescriptions.includes(skillDescription)) {
+            } else if (skillCategory === "Listening Comprehension") {
               newSkillStatus.Listening[skillId] = true;
-            } else if (readingSkillDescriptions.includes(skillDescription)) {
+            } else if (skillCategory === "Reading") {
               newSkillStatus.Reading[skillId] = true;
             }
           });
@@ -208,7 +171,7 @@ export default function StudyPlanSubmissionCreate() {
     } else if (!isEditMode && allSkills.length > 0) {
       setIsFetchingData(false);
     }
-  }, [id, isEditMode, navigate, allSkills, structureOptions, listeningOptions, readingOptions]); // Tambahkan options sebagai dependensi
+  }, [id, isEditMode, navigate, allSkills]);
 
   const toggleSkill = (category: string, skillId: number) => {
     setSkillStatus((prev) => ({
@@ -221,6 +184,7 @@ export default function StudyPlanSubmissionCreate() {
   };
 
   const handleNext = () => {
+    // Validasi input form utama hanya saat transisi dari step "structure"
     if (step === "structure") {
       if (!targetTime || !jamBelajar || !targetScore || !jumlahHari) {
         setGeneralError("Harap lengkapi semua informasi umum rencana belajar.");
@@ -238,7 +202,7 @@ export default function StudyPlanSubmissionCreate() {
         return;
       }
     }
-    setGeneralError(null);
+    setGeneralError(null); // Hapus error setelah validasi berhasil atau jika bukan step "structure"
 
     if (step === "structure") {
       setStep("listening");
@@ -253,7 +217,6 @@ export default function StudyPlanSubmissionCreate() {
     }
   };
 
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -263,7 +226,7 @@ export default function StudyPlanSubmissionCreate() {
     if (!targetTime || !jamBelajar || !targetScore || !jumlahHari) {
       setGeneralError("Harap lengkapi semua informasi umum rencana belajar.");
       setIsLoading(false);
-      setStep("structure");
+      setStep("structure"); // Kembali ke step "structure" untuk menampilkan form
       return;
     }
     const parsedTargetScore = parseInt(targetScore);
@@ -293,7 +256,7 @@ export default function StudyPlanSubmissionCreate() {
     });
 
     if (selectedSkillIds.length === 0) {
-      setGeneralError("Anda harus memilih setidaknya satu skill.");
+      setGeneralError("Anda harus memilih setidaknya satu skill dari semua kategori.");
       setIsLoading(false);
       return;
     }
@@ -367,7 +330,7 @@ export default function StudyPlanSubmissionCreate() {
   if (isFetchingData || allSkills.length === 0) {
     return (
       <div className="bg-white px-3 py-2 rounded-lg shadow-md min-h-[300px] flex justify-center items-center">
-        <p className="text-gray-600">Memuat data...</p>
+        <p className="text-gray-600">Memuat data skill...</p>
       </div>
     );
   }
@@ -398,6 +361,7 @@ export default function StudyPlanSubmissionCreate() {
           </p>
         )}
 
+        {/* FORM INPUT UMUM (TETAP TAMPIL DI SEMUA STEP) */}
         <div>
           <label htmlFor="targetTime" className="block text-lg font-bold text-gray-800 mb-2">
             Target Waktu
@@ -456,7 +420,7 @@ export default function StudyPlanSubmissionCreate() {
 
         <div>
           <label htmlFor="jumlahHari" className="block text-lg font-bold text-gray-800 mb-2">
-            Berapa hari waktu yang diluangkan per-minggu
+            Berapa waktu yang diluangkan per-hari
           </label>
           <select
             id="jumlahHari"
@@ -477,11 +441,12 @@ export default function StudyPlanSubmissionCreate() {
           </select>
         </div>
 
+        {/* BAGIAN SKILL VIEW BERDASARKAN STEP */}
         {step === "structure" && (
           <div className="bg-gray-50 p-4 rounded-lg shadow-inner">
             <SkillListView
               label="Bagian Structure and Written Expression"
-              activeTab="Structure"
+              activeTab="Structure" // activeTab ini hanya untuk label visual di SkillListView, tidak perlu match persis dengan kategori backend
               skillOptions={{ Structure: structureOptions }}
               skillStatus={skillStatus.Structure}
               toggleSkill={(skillId) => toggleSkill("Structure", skillId)}

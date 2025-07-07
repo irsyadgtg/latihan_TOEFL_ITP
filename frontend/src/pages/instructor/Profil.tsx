@@ -1,38 +1,37 @@
-import { useState, useEffect, ChangeEvent } from "react";
+import React, { useState, useEffect, ChangeEvent } from "react";
 import { FaEdit } from "react-icons/fa";
 import { format } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
-import { id as idLocale } from 'date-fns/locale'; // Impor jika ingin locale Bahasa Indonesia untuk DayPicker
+import { id as idLocale } from 'date-fns/locale';
 
 import { useDashboardLayoutContext } from '../../layouts/DashboardLayout';
 import axiosInstance from "../../services/axios";
-import axios, { AxiosError } from "axios"; // Import axios untuk isAxiosError
+import axios, { AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 
 // Definisikan interface untuk struktur data profil instruktur dari API
-// SESUAI DENGAN respons getProfilInstruktur() di KelolaProfilPegawaiController
 interface InstructorProfileAPIResponse {
     username: string;
     email: string;
     namaLengkap: string;
-    nik_nip: string; // NIK/NIP atau identifikasi unik instruktur
-    nomorTelepon: string | null; // Bisa null
-    alamat: string | null; // Bisa null
-    keahlian: string; // Dari relasi instruktur
-    waktuMulai: string; // Dari relasi instruktur (misal: "08:00:00")
-    waktuBerakhir: string; // Dari relasi instruktur (misal: "16:00:00")
-    tglKetersediaan: string; // Dari relasi instruktur (misal: "YYYY-MM-DD")
-    urlFotoProfil?: string | null; // URL gambar profil dari API, opsional
+    nik_nip: string;
+    nomorTelepon: string | null;
+    alamat: string | null;
+    keahlian: string;
+    waktuMulai: string;
+    waktuBerakhir: string;
+    tglKetersediaan: string;
+    urlFotoProfil?: string | null;
 }
 
-export default function ProfilInstruktur() { // Ubah nama fungsi komponen agar unik
+export default function ProfilInstruktur() {
     const { setTitle, setSubtitle } = useDashboardLayoutContext();
     const navigate = useNavigate();
 
     const [isEditing, setIsEditing] = useState(false);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-    const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined); // Untuk tglKetersediaan
+    const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
     const [photoFile, setPhotoFile] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -41,11 +40,11 @@ export default function ProfilInstruktur() { // Ubah nama fungsi komponen agar u
         fullName: "",
         username: "",
         email: "",
-        idNumber: "", // untuk NIK/NIP
+        idNumber: "",
         address: "",
         phone: "",
-        waktuMulai: "", // Waktu mulai ketersediaan
-        waktuBerakhir: "", // Waktu berakhir ketersediaan
+        waktuMulai: "",
+        waktuBerakhir: "",
         keahlian: "",
     });
 
@@ -74,12 +73,15 @@ export default function ProfilInstruktur() { // Ubah nama fungsi komponen agar u
                 address: data.alamat || '',
                 phone: data.nomorTelepon || '',
                 keahlian: data.keahlian || '',
-                waktuMulai: data.waktuMulai ? data.waktuMulai.substring(0, 5) : '', // Ambil HH:MM
-                waktuBerakhir: data.waktuBerakhir ? data.waktuBerakhir.substring(0, 5) : '', // Ambil HH:MM
+                waktuMulai: data.waktuMulai ? data.waktuMulai.substring(0, 5) : '',
+                waktuBerakhir: data.waktuBerakhir ? data.waktuBerakhir.substring(0, 5) : '',
             });
 
+            console.log("[ProfilInstruktur] Data keahlian dari API:", data.keahlian); 
+            console.log("[ProfilInstruktur] Tipe data keahlian dari API:", typeof data.keahlian); 
+
             if (data.tglKetersediaan) {
-                setSelectedDate(new Date(data.tglKetersediaan));
+                setSelectedDate(new Date(data.tglKetersediaan)); 
             } else {
                 setSelectedDate(undefined);
             }
@@ -94,7 +96,7 @@ export default function ProfilInstruktur() { // Ubah nama fungsi komponen agar u
                         setError("Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.");
                         localStorage.removeItem('AuthToken');
                         localStorage.removeItem('userData');
-                        navigate('/instruktur/login'); // Sesuaikan path login instruktur
+                        navigate('/instruktur/login');
                     } else if (err.response.status === 403) {
                         setError("Anda tidak memiliki izin untuk melihat profil ini.");
                     } else if (err.response.data && typeof err.response.data === 'object' && 'message' in err.response.data) {
@@ -146,38 +148,34 @@ export default function ProfilInstruktur() { // Ubah nama fungsi komponen agar u
             setSuccessMessage(null);
 
             const formData = new FormData();
-            formData.append("namaLengkap", profileData.fullName);
-            formData.append("username", profileData.username);
-            formData.append("email", profileData.email);
-            formData.append("nik_nip", profileData.idNumber);
-            formData.append("alamat", profileData.address);
-            formData.append("nomorTelepon", profileData.phone);
+            // --- BARIS INI DIHAPUS SESUAI PERMINTAAN ANDA ---
+            // formData.append("_method", "PUT"); 
+            // ------------------------------------------------
+
+            if (profileData.fullName) formData.append("namaLengkap", profileData.fullName);
+            if (profileData.username) formData.append("username", profileData.username);
+            if (profileData.email) formData.append("email", profileData.email);
+            if (profileData.idNumber) formData.append("nik_nip", profileData.idNumber);
+            if (profileData.address) formData.append("alamat", profileData.address);
+            if (profileData.phone) formData.append("nomorTelepon", profileData.phone);
             
-            // Perhatikan field untuk waktu dan keahlian di backend Anda (sesuai 'updateProfilInstruktur')
-            // Misalnya, jika backend mengharapkan 'waktu_mulai', 'waktu_berakhir', 'keahlian', dan 'tgl_ketersediaan'
-            if (profileData.waktuMulai) formData.append("waktu_mulai", profileData.waktuMulai + ':00'); // Tambah ':00' jika backend butuh format HH:MM:SS
-            if (profileData.waktuBerakhir) formData.append("waktu_berakhir", profileData.waktuBerakhir + ':00'); // Tambah ':00'
-            if (profileData.keahlian) formData.append("keahlian", profileData.keahlian);
+            if (profileData.waktuMulai) formData.append("waktu_mulai", profileData.waktuMulai + ':00');
+            if (profileData.waktuBerakhir) formData.append("waktu_berakhir", profileData.waktuBerakhir + ':00');
+            if (profileData.keahlian) formData.append("keahlian", profileData.keahlian); 
             if (selectedDate) {
                 formData.append("tgl_ketersediaan", format(selectedDate, 'yyyy-MM-dd'));
             }
 
             if (photoFile) {
-                formData.append("foto", photoFile); // Konfirmasi nama field 'foto' dengan backend
+                formData.append("foto", photoFile);
             }
 
-
             try {
-                
-                const response = await axiosInstance.post('/profil/instruktur', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                    },
-                });
-
-                console.log("Instructor profile updated:", response.data);
+                // Sekarang ini akan mengirimkan POST request murni
+                const response = await axiosInstance.post('/profil/instruktur', formData); 
+                console.log("Instructor profile updated successfully:", response.data);
                 setSuccessMessage("Profil instruktur berhasil diperbarui!");
-                await fetchProfile();
+                await fetchProfile(); 
                 setIsEditing(false);
             } catch (err) {
                 console.error("Failed to update instructor profile:", err);
@@ -219,7 +217,7 @@ export default function ProfilInstruktur() { // Ubah nama fungsi komponen agar u
     const inputStyles =
         'w-full mt-1 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 disabled:bg-gray-100';
 
-    if (loading) {
+    if (loading && !profileData.fullName) {
         return <div className="text-gray-600 text-center py-8">Memuat profil instruktur...</div>;
     }
 
@@ -279,10 +277,10 @@ export default function ProfilInstruktur() { // Ubah nama fungsi komponen agar u
                     <button
                         onClick={handleEditToggle}
                         className={`px-4 py-2 border border-[#6B46C1] text-[#6B46C1] rounded-lg transition text-sm font-medium flex items-center gap-2
-              ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#6B46C1]/10'}`}
+                      ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#6B46C1]/10'}`}
                         disabled={loading}
                     >
-                        {loading ? 'Memproses...' : (isEditing ? "Simpan" : "Edit")}
+                        {loading && isEditing ? 'Menyimpan...' : loading ? 'Memuat...' : (isEditing ? "Simpan" : "Edit")}
                         {!isEditing && !loading && <FaEdit className="w-4 h-4" />}
                     </button>
                 </div>
@@ -292,12 +290,12 @@ export default function ProfilInstruktur() { // Ubah nama fungsi komponen agar u
                         {successMessage}
                     </div>
                 )}
-                {error && !successMessage && (
+                {error && ( 
                     <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4" role="alert">
                         <p>{error}</p>
                         {(error.includes("waktu habis") || error.includes("Tidak dapat terhubung") || error.includes("Terjadi kesalahan")) && (
                             <button
-                                onClick={fetchProfile}
+                                onClick={isEditing ? handleEditToggle : fetchProfile}
                                 className="mt-2 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
                             >
                                 Coba Lagi
@@ -337,7 +335,7 @@ export default function ProfilInstruktur() { // Ubah nama fungsi komponen agar u
                             placeholder="Masukkan email"
                             value={profileData.email}
                             onChange={handleChange}
-                            disabled={!isEditing || loading} // Biarkan disabled jika email tidak bisa diubah dari sini
+                            disabled={!isEditing || loading} 
                             className={inputStyles}
                         />
                     </div>
@@ -397,16 +395,16 @@ export default function ProfilInstruktur() { // Ubah nama fungsi komponen agar u
                             <div>
                                 <label className="block text-sm text-gray-600 mb-1">Waktu Mulai</label>
                                 <select
-                                    name="waktuMulai" // Ubah name sesuai field di state
+                                    name="waktuMulai"
                                     value={profileData.waktuMulai}
                                     onChange={handleChange}
                                     disabled={!isEditing || loading}
                                     className={inputStyles}
                                 >
                                     <option value="">Pilih Waktu Mulai</option>
-                                    {[...Array(17)].map((_, i) => { // Dari jam 08:00 sampai 23:00
+                                    {[...Array(17)].map((_, i) => { 
                                         const hour = 8 + i;
-                                        if (hour < 24) { // Pastikan jam tidak lebih dari 23
+                                        if (hour < 24) { 
                                             const time = `${String(hour).padStart(2, '0')}:00`;
                                             return <option key={time} value={time}>{time}</option>;
                                         }
@@ -417,16 +415,16 @@ export default function ProfilInstruktur() { // Ubah nama fungsi komponen agar u
                             <div>
                                 <label className="block text-sm text-gray-600 mb-1">Waktu Berakhir</label>
                                 <select
-                                    name="waktuBerakhir" // Ubah name sesuai field di state
+                                    name="waktuBerakhir"
                                     value={profileData.waktuBerakhir}
                                     onChange={handleChange}
                                     disabled={!isEditing || loading}
                                     className={inputStyles}
                                 >
                                     <option value="">Pilih Waktu Berakhir</option>
-                                    {[...Array(17)].map((_, i) => { // Dari jam 08:00 sampai 23:00
+                                    {[...Array(17)].map((_, i) => { 
                                         const hour = 8 + i;
-                                        if (hour < 24) { // Pastikan jam tidak lebih dari 23
+                                        if (hour < 24) { 
                                             const time = `${String(hour).padStart(2, '0')}:00`;
                                             return <option key={time} value={time}>{time}</option>;
                                         }
@@ -440,18 +438,13 @@ export default function ProfilInstruktur() { // Ubah nama fungsi komponen agar u
                             <label className="text-sm font-medium text-gray-700">Keahlian</label>
                             <div>
                                 <label className="block text-sm text-gray-600 mb-1 invisible">Keahlian</label>
-                                <select
+                                <input
                                     name="keahlian"
-                                    value={profileData.keahlian}
-                                    onChange={handleChange}
-                                    disabled={!isEditing || loading}
+                                    type="text"
+                                    value={profileData.keahlian || 'Tidak ada keahlian'} 
+                                    readOnly 
                                     className={inputStyles}
-                                >
-                                    <option value="">Pilih Keahlian</option>
-                                    <option value="Structure">Structure</option>
-                                    <option value="Listening">Listening</option>
-                                    <option value="Reading">Reading</option>
-                                </select>
+                                />
                             </div>
                         </div>
                     </div>
@@ -467,7 +460,7 @@ export default function ProfilInstruktur() { // Ubah nama fungsi komponen agar u
                             selected={selectedDate}
                             onSelect={handleDateSelect}
                             initialFocus
-                            locale={idLocale} // Gunakan locale Bahasa Indonesia
+                            locale={idLocale}
                         />
                         <button
                             onClick={() => setIsCalendarOpen(false)}
