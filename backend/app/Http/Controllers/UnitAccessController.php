@@ -10,38 +10,116 @@ use Carbon\Carbon;
 class UnitAccessController extends Controller
 {
     /**
-     * Get unlocked units based on peserta's received skills from feedback
+     * Get package bonus units for specific user
      */
-    public function getUnlockedUnits(Request $request)
+    private function getPackageBonusUnits($user)
     {
-        $user = Auth::user();
-        
-        // Instructor bisa akses semua unit
-        if ($user->role === 'instruktur' || $user->role === 'admin') {
-            return response()->json([
-                'unlocked_units' => [
-                    'listening' => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-                    'structure' => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 
-                    'reading' => [0, 1, 2, 3, 4, 5, 6]
-                ],
-                'has_active_feedback' => true,
-                'feedback_skills' => [],
-                'message' => 'Instructor has full access to all units'
-            ]);
+        if ($user->role !== 'peserta') {
+            // Admin/instruktur dapat full access semua unit
+            return [
+                'listening' => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                'structure' => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                'reading' => [0, 1, 2, 3, 4, 5, 6]
+            ];
         }
 
-        // Peserta harus punya feedback rencana belajar aktif
+        // 1. Cek paket aktif
+        $pesertaPaket = $user->peserta->pesertaPaket()
+            ->where('paketSaatIni', true)
+            ->where('statusAktif', true)
+            ->first();
+
+        if (!$pesertaPaket || !$pesertaPaket->paket) {
+            return [
+                'listening' => [],
+                'structure' => [],
+                'reading' => []
+            ];
+        }
+
+        // 2. Parse fasilitas paket
+        $fasilitas = $pesertaPaket->paket->fasilitas;
+        $packageUnits = [
+            'listening' => [],
+            'structure' => [],
+            'reading' => []
+        ];
+
+        // 3. Cek setiap modul apakah ada di fasilitas
+        if (strpos($fasilitas, 'listening') !== false) {
+            $packageUnits['listening'] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        }
+
+        if (strpos($fasilitas, 'structure') !== false) {
+            $packageUnits['structure'] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        }
+
+        if (strpos($fasilitas, 'reading') !== false) {
+            $packageUnits['reading'] = [0, 1, 2, 3, 4, 5, 6];
+        }
+
+        return $packageUnits;
+    }
+
+    /**
+     * Get package info for response
+     */
+    private function getPackageInfo($user)
+    {
         if ($user->role !== 'peserta') {
-            return response()->json([
-                'unlocked_units' => [
-                    'listening' => [0],
-                    'structure' => [0],
-                    'reading' => [0]
-                ],
-                'has_active_feedback' => false,
-                'feedback_skills' => [],
-                'message' => 'Invalid user role'
-            ], 403);
+            return [
+                'has_active_package' => true,
+                'package_name' => 'Full Access (Admin/Instruktur)',
+                'package_facilities' => 'listening,structure,reading,konsultasi,simulasi',
+                'expires_at' => null
+            ];
+        }
+
+        $pesertaPaket = $user->peserta->pesertaPaket()
+            ->where('paketSaatIni', true)
+            ->where('statusAktif', true)
+            ->first();
+
+        if (!$pesertaPaket || !$pesertaPaket->paket) {
+            return [
+                'has_active_package' => false,
+                'package_name' => null,
+                'package_facilities' => null,
+                'expires_at' => null
+            ];
+        }
+
+        return [
+            'has_active_package' => true,
+            'package_name' => $pesertaPaket->paket->namaPaket,
+            'package_facilities' => $pesertaPaket->paket->fasilitas,
+            'expires_at' => $pesertaPaket->tglBerakhir
+        ];
+    }
+
+    /**
+     * Get base unlocked units from feedback
+     */
+    private function getBaseUnlockedFromFeedback($user)
+    {
+        // Instructor/admin have full access from feedback
+        if ($user->role === 'instruktur' || $user->role === 'admin') {
+            return [
+                'listening' => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                'structure' => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                'reading' => [0, 1, 2, 3, 4, 5, 6]
+            ];
+        }
+
+        // Default minimal access (unit 0 - overview)
+        $baseUnlocked = [
+            'listening' => [0],
+            'structure' => [0],
+            'reading' => [0]
+        ];
+
+        if ($user->role !== 'peserta') {
+            return $baseUnlocked;
         }
 
         // Cari feedback rencana belajar aktif terbaru
@@ -56,16 +134,7 @@ class UnitAccessController extends Controller
             ->first();
 
         if (!$activeFeedback) {
-            return response()->json([
-                'unlocked_units' => [
-                    'listening' => [0],
-                    'structure' => [0],
-                    'reading' => [0]
-                ],
-                'has_active_feedback' => false,
-                'feedback_skills' => [],
-                'message' => 'No active learning plan feedback found. You can only access unit overview.'
-            ]);
+            return $baseUnlocked;
         }
 
         // Ambil skill yang diterima dari feedback
@@ -76,30 +145,126 @@ class UnitAccessController extends Controller
             ->get();
 
         if ($feedbackSkills->isEmpty()) {
-            return response()->json([
-                'unlocked_units' => [
-                    'listening' => [0],
-                    'structure' => [0],
-                    'reading' => [0]
-                ],
-                'has_active_feedback' => true,
-                'feedback_skills' => [],
-                'message' => 'No skills found in your current feedback'
-            ]);
+            return $baseUnlocked;
         }
 
         // Mapping skill ID ke unit yang ter-unlock
-        $unlockedUnits = $this->mapSkillsToUnits($feedbackSkills->pluck('idSkill')->toArray());
+        return $this->mapSkillsToUnits($feedbackSkills->pluck('idSkill')->toArray());
+    }
 
-        return response()->json([
-            'unlocked_units' => $unlockedUnits,
+    /**
+     * Get feedback info for response
+     */
+    private function getFeedbackInfo($user)
+    {
+        if ($user->role !== 'peserta') {
+            return [
+                'has_active_feedback' => true,
+                'plan_name' => 'Full Access (Admin/Instruktur)',
+                'expires_at' => null,
+                'skills_count' => 26
+            ];
+        }
+
+        $activeFeedback = DB::table('feedback_rencana_belajar as fb')
+            ->join('pengajuan_rencana_belajar as prb', 'fb.idPengajuanRencanaBelajar', '=', 'prb.idPengajuanRencanaBelajar')
+            ->where('prb.idPeserta', $user->idPeserta)
+            ->where('prb.status', 'sudah ada feedback')
+            ->where('prb.isAktif', true)
+            ->whereDate('prb.selesaiPada', '>=', Carbon::now())
+            ->orderBy('fb.tglPemberianFeedback', 'desc')
+            ->select('fb.idFeedbackRencanaBelajar', 'prb.namaRencana', 'prb.selesaiPada')
+            ->first();
+
+        if (!$activeFeedback) {
+            return [
+                'has_active_feedback' => false,
+                'plan_name' => null,
+                'expires_at' => null,
+                'skills_count' => 0
+            ];
+        }
+
+        $skillsCount = DB::table('detail_feedback_rencana_belajar')
+            ->where('idFeedbackRencanaBelajar', $activeFeedback->idFeedbackRencanaBelajar)
+            ->count();
+
+        return [
             'has_active_feedback' => true,
-            'feedback_skills' => $feedbackSkills->toArray(),
-            'feedback_info' => [
-                'plan_name' => $activeFeedback->namaRencana,
-                'expires_at' => $activeFeedback->selesaiPada
+            'plan_name' => $activeFeedback->namaRencana,
+            'expires_at' => $activeFeedback->selesaiPada,
+            'skills_count' => $skillsCount
+        ];
+    }
+
+    /**
+     * MAIN METHOD: Get unlocked units dengan breakdown rencana belajar + paket
+     */
+    public function getUnlockedUnits(Request $request)
+    {
+        $user = Auth::user();
+
+        // STEP 1: Get base access dari rencana belajar
+        $baseUnlocked = $this->getBaseUnlockedFromFeedback($user);
+
+        // STEP 2: Get bonus access dari paket
+        $packageBonus = $this->getPackageBonusUnits($user);
+
+        // STEP 3: Merge base + bonus (PRIORITY: rencana belajar + paket)
+        $finalUnlocked = [
+            'listening' => array_unique(array_merge(
+                $baseUnlocked['listening'],
+                $packageBonus['listening']
+            )),
+            'structure' => array_unique(array_merge(
+                $baseUnlocked['structure'],
+                $packageBonus['structure']
+            )),
+            'reading' => array_unique(array_merge(
+                $baseUnlocked['reading'],
+                $packageBonus['reading']
+            ))
+        ];
+
+        // Sort all units
+        sort($finalUnlocked['listening']);
+        sort($finalUnlocked['structure']);
+        sort($finalUnlocked['reading']);
+
+        // Get additional info
+        $feedbackInfo = $this->getFeedbackInfo($user);
+        $packageInfo = $this->getPackageInfo($user);
+
+        // RETURN FORMAT: Compatible dengan PageController existing + breakdown baru
+        return response()->json([
+            // Format lama untuk backward compatibility
+            'unlocked_units' => $finalUnlocked,
+            'has_active_feedback' => $feedbackInfo['has_active_feedback'],
+            'feedback_skills' => [], // Simplified
+            'message' => 'Units unlocked from both learning plan and active package',
+
+            // Format baru dengan breakdown detail - PERBAIKAN DI SINI
+            'final_unlocked_units' => $finalUnlocked,
+            'breakdown' => [
+                'from_rencana_belajar' => [
+                    'units' => $baseUnlocked, // DATA ASLI dari rencana belajar
+                    'has_active_feedback' => $feedbackInfo['has_active_feedback'],
+                    'feedback_info' => $feedbackInfo
+                ],
+                'from_paket' => [
+                    'units' => $packageBonus, // DATA ASLI dari paket
+                    'package_info' => $packageInfo
+                ]
             ],
-            'message' => 'Units unlocked based on your learning plan skills'
+            'access_summary' => [
+                'total_listening_units' => count($finalUnlocked['listening']),
+                'total_structure_units' => count($finalUnlocked['structure']),
+                'total_reading_units' => count($finalUnlocked['reading']),
+                'access_sources' => [
+                    'rencana_belajar' => $feedbackInfo['has_active_feedback'],
+                    'paket_aktif' => $packageInfo['has_active_package']
+                ]
+            ]
         ]);
     }
 
@@ -157,16 +322,17 @@ class UnitAccessController extends Controller
         $unlockedResponse = $this->getUnlockedUnits($request);
         $unlockedData = $unlockedResponse->getData(true);
 
-        $canAccess = in_array($unitNumber, $unlockedData['unlocked_units'][$modul] ?? []);
+        $canAccess = in_array($unitNumber, $unlockedData['final_unlocked_units'][$modul] ?? []);
 
         return response()->json([
             'can_access' => $canAccess,
             'modul' => $modul,
             'unit_number' => $unitNumber,
-            'unlocked_units' => $unlockedData['unlocked_units'][$modul] ?? [],
-            'message' => $canAccess ? 
-                "Access granted to {$modul} unit {$unitNumber}" : 
-                "Access denied to {$modul} unit {$unitNumber}. Check your learning plan."
+            'unlocked_units' => $unlockedData['final_unlocked_units'][$modul] ?? [],
+            'access_breakdown' => $unlockedData['breakdown'],
+            'message' => $canAccess ?
+                "Access granted to {$modul} unit {$unitNumber}" :
+                "Access denied to {$modul} unit {$unitNumber}. Check your learning plan and package."
         ]);
     }
 }

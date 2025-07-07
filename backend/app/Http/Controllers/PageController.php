@@ -9,49 +9,87 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class PageController extends Controller
 {
     public function index(Request $request)
     {
         $user = Auth::user();
-        
+
         // Admin/Instruktur bisa lihat semua - TIDAK BERUBAH
         if ($user->role === 'instruktur' || $user->role === 'admin') {
             return Page::orderBy('modul')->orderBy('unit_number')->orderBy('order_number')->get();
         }
-        
-        // Peserta hanya bisa lihat yang accessible
+
+        // Peserta: gunakan UnitAccessController yang sudah terintegrasi
         if ($user->role === 'peserta') {
-            // Get unlocked units for this student
+            // Get final unlocked units dari UnitAccessController
             $unitAccessController = new UnitAccessController();
             $unlockedResponse = $unitAccessController->getUnlockedUnits($request);
             $unlockedData = $unlockedResponse->getData(true);
-            
-            if (!$unlockedData['has_active_feedback']) {
-                // Return empty array to maintain frontend compatibility
-                return collect();
+
+            $finalUnlocked = $unlockedData['final_unlocked_units'];
+
+            // Cek request modul spesifik untuk validasi
+            $requestedModul = $request->query('modul');
+            if ($requestedModul) {
+                if (!in_array($requestedModul, ['listening', 'structure', 'reading'])) {
+                    return response()->json(['error' => 'Modul tidak valid'], 400);
+                }
+
+                // Jika request unit spesifik juga
+                $requestedUnit = $request->query('unit_number');
+                if ($requestedUnit !== null) {
+                    $requestedUnit = (int) $requestedUnit;
+                    if (!in_array($requestedUnit, $finalUnlocked[$requestedModul])) {
+                        return response()->json([
+                            'error' => "Akses ditolak untuk {$requestedModul} unit {$requestedUnit}",
+                            'available_units' => $finalUnlocked[$requestedModul],
+                            'access_breakdown' => $unlockedData['breakdown'],
+                            'reason' => 'Unit tidak tersedia dalam paket atau rencana belajar Anda'
+                        ], 403);
+                    }
+                }
             }
-            
-            $unlockedUnits = $unlockedData['unlocked_units'];
-            
-            // Filter pages berdasarkan unlocked units
+
+            // Filter pages berdasarkan final unlocked units
             $accessiblePages = collect();
-            
-            foreach ($unlockedUnits as $modul => $units) {
-                $modulPages = Page::where('modul', $modul)
-                                 ->whereIn('unit_number', $units)
-                                 ->orderBy('modul')
-                                 ->orderBy('unit_number')
-                                 ->orderBy('order_number')
-                                 ->get();
-                $accessiblePages = $accessiblePages->merge($modulPages);
+
+            foreach ($finalUnlocked as $modul => $units) {
+                if (!empty($units)) {
+                    $query = Page::where('modul', $modul)
+                        ->whereIn('unit_number', $units)
+                        ->orderBy('modul')
+                        ->orderBy('unit_number')
+                        ->orderBy('order_number');
+
+                    // Apply filters if requested
+                    if ($request->has('modul') && $request->modul === $modul) {
+                        if ($request->has('unit_number')) {
+                            $query->where('unit_number', $request->unit_number);
+                        }
+                    } elseif ($request->has('modul') && $request->modul !== $modul) {
+                        continue; // Skip modul yang tidak diminta
+                    }
+
+                    $modulPages = $query->get();
+                    $accessiblePages = $accessiblePages->merge($modulPages);
+                }
             }
-            
+
+            Log::info('Peserta pages access', [
+                'user_id' => $user->idPeserta,
+                'requested_modul' => $requestedModul,
+                'requested_unit' => $request->query('unit_number'),
+                'final_unlocked' => $finalUnlocked,
+                'accessible_pages_count' => $accessiblePages->count()
+            ]);
+
             // Return collection yang akan di-serialize jadi array
             return $accessiblePages;
         }
-        
+
         // Fallback untuk role lain
         return Page::orderBy('modul')->orderBy('unit_number')->orderBy('order_number')->get();
     }
@@ -62,7 +100,7 @@ class PageController extends Controller
         $maxOrder = Page::where('modul', $modul)
             ->where('unit_number', $unitNumber)
             ->max('order_number');
-        
+
         return ($maxOrder ?? 0) + 1;
     }
 
@@ -88,12 +126,12 @@ class PageController extends Controller
     private function autoCompleteStudentProgress($modul, $unitNumber)
     {
         // Get all students who have progress in this unit
-        $affectedUserIds = UserProgress::whereHas('page', function($query) use ($modul, $unitNumber) {
-                                $query->where('modul', $modul)
-                                      ->where('unit_number', $unitNumber);
-                            })
-                            ->distinct()
-                            ->pluck('idPengguna');
+        $affectedUserIds = UserProgress::whereHas('page', function ($query) use ($modul, $unitNumber) {
+            $query->where('modul', $modul)
+                ->where('unit_number', $unitNumber);
+        })
+            ->distinct()
+            ->pluck('idPengguna');
 
         $totalProcessed = 0;
         $totalAutoCompleted = 0;
@@ -122,9 +160,9 @@ class PageController extends Controller
     {
         // Get current page order in unit
         $currentPages = Page::where('modul', $modul)
-                           ->where('unit_number', $unitNumber)
-                           ->orderBy('order_number')
-                           ->get();
+            ->where('unit_number', $unitNumber)
+            ->orderBy('order_number')
+            ->get();
 
         if ($currentPages->isEmpty()) {
             return 0;
@@ -132,9 +170,9 @@ class PageController extends Controller
 
         // Get user's completed page IDs
         $completedPageIds = UserProgress::where('idPengguna', $idPengguna)
-                                       ->whereIn('page_id', $currentPages->pluck('id'))
-                                       ->pluck('page_id')
-                                       ->toArray();
+            ->whereIn('page_id', $currentPages->pluck('id'))
+            ->pluck('page_id')
+            ->toArray();
 
         // Find the highest completed position
         $highestCompletedPosition = -1;
@@ -149,7 +187,7 @@ class PageController extends Controller
         if ($highestCompletedPosition >= 0) {
             for ($i = 0; $i <= $highestCompletedPosition; $i++) {
                 $page = $currentPages[$i];
-                
+
                 // Only create if doesn't exist
                 $created = UserProgress::updateOrCreate([
                     'idPengguna' => $idPengguna,
@@ -201,7 +239,7 @@ class PageController extends Controller
 
         $path = $request->file('file')->store('attachments', 'public');
 
-        return response()->json(['url' => '/storage/' . $path]);
+        return response()->json(['url' => Storage::url($path)]);  // ← SUDAH DIPERBAIKI
     }
 
     public function store(Request $request)
@@ -231,9 +269,8 @@ class PageController extends Controller
             // Handle file upload
             if ($request->hasFile('attachment')) {
                 $path = $request->file('attachment')->store('attachments', 'public');
-                $data['attachment'] = '/storage/' . $path;
+                $data['attachment'] = Storage::url($path);  // ← SUDAH DIPERBAIKI
             }
-
             return DB::transaction(function () use ($data) {
                 // Make space for new page at target position
                 $this->shiftPagesInUnit($data['modul'], $data['unit_number'], $data['order_number'], 'down');
@@ -282,7 +319,7 @@ class PageController extends Controller
             // Handle file upload
             if ($request->hasFile('attachment')) {
                 $path = $request->file('attachment')->store('attachments', 'public');
-                $data['attachment'] = '/storage/' . $path;
+                $data['attachment'] = Storage::url($path);  // ← SUDAH DIPERBAIKI
             }
 
             return DB::transaction(function () use ($page, $data) {

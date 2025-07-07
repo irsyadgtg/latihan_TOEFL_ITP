@@ -16,6 +16,15 @@ interface LatestNotificationData {
   // ... properti lain jika ada, tidak penting untuk count
 }
 
+// Interface untuk pembelajaran notifications (dari GET /notifications)
+interface PembelajaranNotificationData {
+  id: number;
+  is_read: boolean;
+  title: string;
+  message: string;
+  created_at: string;
+}
+
 // --- TIPE CONTEXT DASHBOARD LAYOUT ---
 // Ini yang akan diakses oleh komponen anak yang berada di dalam <Outlet>
 export type DashboardLayoutContextType = {
@@ -23,7 +32,6 @@ export type DashboardLayoutContextType = {
   subtitle: string;
   setTitle: (value: string) => void;
   setSubtitle: (value: string) => void;
-  refreshUnreadNotifications: () => void; // Fungsi untuk memicu refresh notifikasi
 };
 
 interface DashboardLayoutProps extends SidebarProps {
@@ -31,48 +39,124 @@ interface DashboardLayoutProps extends SidebarProps {
 }
 
 export default function DashboardLayout({ menuItems }: DashboardLayoutProps) {
-  const [title, setTitle] = useState("Profil Saya");
-  const [subtitle, setSubtitle] = useState("Isikan profil pengguna Anda");
+  const [title, setTitle] = useState("Dashboard");
+  const [subtitle, setSubtitle] = useState(
+    "Selamat datang di Website Latihan TOEFL ITP"
+  );
   const [unreadCount, setUnreadCount] = useState(0); // State untuk jumlah notifikasi belum dibaca
   const navigate = useNavigate(); // Untuk penanganan error 401
 
   // Fungsi untuk mengambil jumlah notifikasi yang belum dibaca
   const fetchUnreadNotificationsCount = async () => {
     try {
-      // Panggil endpoint /admin/notifikasi/terbaru untuk mendapatkan 5 notifikasi terbaru
-      const response = await axiosInstance.get<{ data: LatestNotificationData[] }>('/admin/notifikasi/terbaru');
-      
-      // Asumsi respons adalah { data: [...] }
-      const latestNotifications = response.data.data || []; 
+      const role = localStorage.getItem("role");
+      let count = 0;
 
-      // Filter notifikasi yang belum dibaca (sudahDibaca === 0)
-      const count = latestNotifications.filter(notif => notif.sudahDibaca === 0).length;
+      if (role === "admin") {
+        // EXISTING: Admin gunakan endpoint admin notifikasi saja
+        const response = await axiosInstance.get<{
+          data: LatestNotificationData[];
+        }>("/admin/notifikasi/terbaru");
+        const latestNotifications = response.data.data || [];
+        count = latestNotifications.filter(
+          (notif) => notif.sudahDibaca === 0
+        ).length;
+      } else if (role === "peserta" || role === "instruktur") {
+        // TAMBAHAN: Peserta & Instruktur gunakan endpoint pembelajaran notifications
+        const response = await axiosInstance.get<{
+          data: PembelajaranNotificationData[];
+        }>("/notifications");
+        const notifications = response.data.data || [];
+        count = notifications.filter((notif) => !notif.is_read).length;
+      }
+
       setUnreadCount(count);
     } catch (err) {
       console.error("Gagal mengambil jumlah notifikasi belum dibaca:", err);
-      // Tangani error, misalnya redirect ke login jika 401 (Unauthenticated)
-      if (axios.isAxiosError(err) && err.response && err.response.status === 401) {
-        localStorage.removeItem('AuthToken'); // Hapus token yang mungkin sudah tidak valid
-        navigate('/login'); // Arahkan ke login
+
+      if (
+        axios.isAxiosError(err) &&
+        err.response &&
+        err.response.status === 401
+      ) {
+        localStorage.removeItem("AuthToken");
+        localStorage.removeItem("role");
+        navigate("/login");
       }
-      setUnreadCount(0); // Set ke 0 jika ada error agar tidak menampilkan angka yang salah
+      setUnreadCount(0);
     }
   };
+
+  useEffect(() => {
+    fetchUnreadNotificationsCount();
+  }, []);
+
+  // --- TAMBAHAN: Update title berdasarkan role dan path untuk pembelajaran routes ---
+  useEffect(() => {
+    const role = localStorage.getItem("role");
+    const path = window.location.pathname;
+
+    // TAMBAHAN: Set default title berdasarkan pembelajaran context
+    if (path.includes("/materi")) {
+      setTitle("Materi Pembelajaran");
+      setSubtitle("Pelajari materi TOEFL ITP secara bertahap");
+    } else if (path.includes("/simulasi")) {
+      setTitle("Simulasi TOEFL");
+      setSubtitle("Latihan simulasi ujian TOEFL ITP");
+    } else if (path.includes("/konsultasi")) {
+      setTitle("Konsultasi");
+      setSubtitle("Diskusi dengan instruktur ahli");
+    } else if (path.includes("/laporan")) {
+      setTitle("Laporan Pembelajaran");
+      setSubtitle("Analisis progress belajar Anda");
+    }
+
+    //dashboard instruktur dan peserta
+    if (path === "/student" || path === "/student/") {
+      setTitle("Dashboard Peserta");
+      setSubtitle("Ringkasan aktivitas dan progress pembelajaran Anda");
+    } else if (path === "/instructor" || path === "/instructor/") {
+      setTitle("Dashboard Instruktur");
+      setSubtitle("Pantau progress dan kelola pembelajaran peserta");
+    } else if (path === "/admin" || path === "/admin/") {
+      setTitle("Dashboard Admin");
+      setSubtitle("Ringkasan statistik sistem dan pengguna");
+    
+    
+    } else if (path.includes("/dashboard")) {
+      // EXISTING: Dashboard title berdasarkan role
+      setTitle(
+        `Dashboard ${
+          role === "admin"
+            ? "Admin"
+            : role === "instruktur"
+            ? "Instruktur"
+            : "Peserta"
+        }`
+      );
+      setSubtitle("Ringkasan aktivitas dan progress");
+    }
+  }, [window.location.pathname]);
 
   return (
     <div className="flex">
       <Sidebar menuItems={menuItems} />
       <div className="ml-[20rem] w-full min-h-screen">
-        {/* Meneruskan props notifikasi ke komponen Header */}
-        <Header 
-          title={title} 
-          note={subtitle} 
-          unreadCount={unreadCount} // Meneruskan jumlah notifikasi belum dibaca
+        {/* EXISTING: Meneruskan props notifikasi ke komponen Header */}
+        <Header
+          title={title}
+          note={subtitle}
+          unreadCount={unreadCount} // MODIFIKASI: Jumlah notifikasi belum dibaca (unified admin + pembelajaran)
         />
         <main className="p-4">
-            {/* Meneruskan refreshUnreadNotifications ke Outlet context juga,
-                agar komponen anak bisa memicu refresh notifikasi jika diperlukan */}
-            <Outlet context={{ title, subtitle, setTitle, setSubtitle }} />
+          <Outlet
+            context={{
+              title,
+              subtitle,
+              setTitle,
+              setSubtitle,
+            }}
+          />
         </main>
       </div>
     </div>

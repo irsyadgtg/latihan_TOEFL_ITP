@@ -21,7 +21,7 @@ class NotificationController extends Controller
             }
         }
 
-        // Support for type filtering
+        // Support for type filtering (konsultasi saja untuk sekarang)
         if ($request->has('type')) {
             $query->where('type', $request->type);
         }
@@ -140,33 +140,6 @@ class NotificationController extends Controller
         $notif->markAsRead();
 
         return response()->json(['message' => 'Berhasil ditandai sudah dibaca dengan status BACA']);
-    }
-
-    public function markAllAsRead(Request $request)
-    {
-        try {
-            $updatedCount = Notification::where('idPengguna', $request->user()->idPengguna)
-                           ->whereNull('read_at')
-                           ->update(['read_at' => now()]);
-
-            Log::info('All notifications marked as read', [
-                'user_id' => $request->user()->idPengguna,
-                'updated_count' => $updatedCount
-            ]);
-
-            return response()->json([
-                'message' => 'All notifications marked as read',
-                'updated_count' => $updatedCount
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Error marking all notifications as read', [
-                'user_id' => $request->user()->idPengguna,
-                'error' => $e->getMessage()
-            ]);
-
-            return response()->json(['error' => 'Failed to mark all notifications as read'], 500);
-        }
     }
 
     public function getUnreadCount(Request $request)

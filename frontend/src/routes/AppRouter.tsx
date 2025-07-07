@@ -49,12 +49,47 @@ import Profil from "../pages/instructor/Profil";
 import DaftarInstruktur from "../pages/instructor/DaftarInstruktur";
 import TinjauRencanaBelajar from "../pages/instructor/TinjauRencanaBelajar";
 
-import DetailRencanaBelajar from '../pages/instructor/DetailRencanaBelajar';
-import { StudyPlanProvider } from '../contexts/StudyPlanContext';
-import { adminNavigation, instructorNavigation, studentNavigation } from "../assets/data/navigasi";
+import DetailRencanaBelajar from "../pages/instructor/DetailRencanaBelajar";
+
+// TAMBAH: Pembelajaran Components dari new/pembelajaran/
+import MateriList from "../new/pembelajaran/MateriList";
+import Materi from "../new/pembelajaran/Materi";
+import Simulasi from "../new/pembelajaran/Simulasi";
+import SimulasiMulai from "../new/pembelajaran/SimulasiMulai";
+import HasilSimulasi from "../new/pembelajaran/HasilSimulasi";
+import ListSimulasi from "../new/pembelajaran/ListSimulasi";
+import KelolaSimulasi from "../new/pembelajaran/KelolaSimulasi";
+import Konsultasi from "../new/pembelajaran/Konsultasi";
+import LaporanPembelajaran from "../new/pembelajaran/LaporanPembelajaran";
+import DetailLaporan from "../new/pembelajaran/DetailLaporan";
+import Notifications from "../new/shared/components/Notifications";
+
+//baru
+import InstructorDashboard from "../pages/instructor/InstructorDashboard";
+
+
+import { StudyPlanProvider } from "../contexts/StudyPlanContext";
+import {
+  adminNavigation,
+  instructorNavigation,
+  studentNavigation,
+} from "../assets/data/navigasi";
 import StudyPlanFeedbackDetail from "../pages/students/StudentPlanFeedback";
 
 const AppRouter = () => {
+  // TAMBAH: Function untuk get menu berdasarkan role
+  // const getPembelajaranMenu = () => {
+  //   const role = localStorage.getItem("role");
+  //   switch (role) {
+  //     case "instruktur":
+  //       return instructorNavigation;
+  //     case "peserta":
+  //       return studentNavigation;
+  //     default:
+  //       return studentNavigation; // fallback
+  //   }
+  // };
+
   return (
     <BrowserRouter>
       <Routes>
@@ -67,10 +102,16 @@ const AppRouter = () => {
 
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route path="/admin"element={<DashboardLayout menuItems={adminNavigation}/>}>
+        <Route
+          path="/admin"
+          element={<DashboardLayout menuItems={adminNavigation} />}
+        >
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="kelola-instruktur" element={<KelolaInstruktur />} />
-          <Route path="kelola-instruktur/tambah" element={<TambahInstruktur />} />
+          <Route
+            path="kelola-instruktur/tambah"
+            element={<TambahInstruktur />}
+          />
           <Route
             path="kelola-instruktur/ubah-ketersediaan/:idPegawai"
             element={<UbahKetersediaan />}
@@ -81,9 +122,15 @@ const AppRouter = () => {
           <Route path="kelola-paket/aktivasi/:id" element={<AktivasiPaket />} />
           <Route path="pantau-peserta" element={<PantauDaftarPeserta />} />
           <Route path="seleksi-skor" element={<SeleksiSkor />} />
-          <Route path="seleksi-skor/detail-pengajuan/:id" element={<DetailPengajuan />} />
+          <Route
+            path="seleksi-skor/detail-pengajuan/:id"
+            element={<DetailPengajuan />}
+          />
           <Route path="riwayat-transaksi" element={<RiwayatTransaksi />} />
-          <Route path="riwayat-transaksi/detail-transaksi" element={<DetailTransaksi />} />
+          <Route
+            path="riwayat-transaksi/detail-transaksi"
+            element={<DetailTransaksi />}
+          />
           <Route path="notifikasi" element={<NotifikasiAdmin />} />
           <Route path="profil" element={<ProfilSaya />} />
         </Route>
@@ -94,20 +141,49 @@ const AppRouter = () => {
           path="/instructor"
           element={
             <StudyPlanProvider>
-              <DashboardLayout menuItems={instructorNavigation}/>
+              <DashboardLayout menuItems={instructorNavigation} />
             </StudyPlanProvider>
           }
         >
-          <Route index element={<Profil />} />
+          <Route index element={<InstructorDashboard />} />
+          <Route path="dashboard" element={<InstructorDashboard />} />  
           <Route path="profil" element={<Profil />} />
           <Route path="daftar-instruktur" element={<DaftarInstruktur />} />
-          <Route path="tinjau-rencana-belajar" element={<TinjauRencanaBelajar />} />
-
-          <Route path="rencana-belajar/:id" element={<DetailRencanaBelajar />} />
+          <Route
+            path="tinjau-rencana-belajar"
+            element={<TinjauRencanaBelajar />}
+          />
+          <Route
+            path="rencana-belajar/:id"
+            element={<DetailRencanaBelajar />}
+          />
+          {/* TAMBAH: Pembelajaran routes untuk instructor */}
+          <Route path="materi" element={<MateriList />} />
+          <Route path="materi/:modul" element={<Materi />} />
+          <Route path="simulasi" element={<Simulasi />} />
+          <Route path="simulasi/kelola" element={<KelolaSimulasi />} />
+          <Route path="konsultasi" element={<Konsultasi />} />
+          <Route path="konsultasi/:instructorId" element={<Konsultasi />} />
+          <Route
+            path="konsultasi/student/:studentId"
+            element={<Konsultasi />}
+          />
+          <Route
+            path="laporan-pembelajaran"
+            element={<LaporanPembelajaran />}
+          />
+          <Route
+            path="laporan-pembelajaran/detail"
+            element={<DetailLaporan />}
+          />
+          <Route path="notifications" element={<Notifications />} />
         </Route>
 
         {/* Student Routes */}
-          <Route path="/student" element={<DashboardLayout menuItems={studentNavigation}/>}>
+        <Route
+          path="/student"
+          element={<DashboardLayout menuItems={studentNavigation} />}
+        >
           <Route index element={<StudentDashboard />} />
           <Route path="profil" element={<ProfilePage />} />
           <Route path="instruktur" element={<InstructurPage />} />
@@ -120,9 +196,60 @@ const AppRouter = () => {
           <Route path="langganan" element={<SubscribePage />} />
           <Route path="langganan/form/:id" element={<SubscribeForm />} />
           <Route path="langganan/riwayat" element={<SubscribeHistory />} />
-          <Route path="pembayaran" element={<SubscribeHistory />} /> {/* Ini mungkin duplikat dengan langganan/riwayat */}
-
+          <Route path="pembayaran" element={<SubscribeHistory />} />{" "}
+          {/* Ini mungkin duplikat dengan langganan/riwayat */}
+          {/* TAMBAH: Pembelajaran routes untuk student */}
+          <Route path="materi" element={<MateriList />} />
+          <Route path="materi/:modul" element={<Materi />} />
+          <Route path="simulasi" element={<Simulasi />} />
+          <Route path="simulasi/hasil" element={<ListSimulasi />} />
+          <Route
+            path="simulasi/hasil/:simulationId"
+            element={<HasilSimulasi />}
+          />
+          <Route path="konsultasi" element={<Konsultasi />} />
+          <Route path="konsultasi/:instructorId" element={<Konsultasi />} />
+          <Route
+            path="laporan-pembelajaran"
+            element={<LaporanPembelajaran />}
+          />
+          <Route
+            path="laporan-pembelajaran/detail"
+            element={<DetailLaporan />}
+          />
+          <Route path="notifications" element={<Notifications />} />
         </Route>
+        {/* simulasi diluar dashboardlayout/sidebar */}
+        <Route path="/student/simulasi/mulai" element={<SimulasiMulai />} />
+
+        {/* Routes Pembelajaran dengan Layout */}
+        {/* <Route element={<DashboardLayout menuItems={getPembelajaranMenu()} />}>
+          <Route path="/materi" element={<MateriList />} />
+          <Route path="/materi/:modul" element={<Materi />} />
+          <Route path="/simulasi" element={<Simulasi />} />
+          <Route path="/simulasi/mulai" element={<SimulasiMulai />} />
+          <Route path="/simulasi/hasil" element={<ListSimulasi />} />
+          <Route
+            path="/simulasi/hasil/:simulationId"
+            element={<HasilSimulasi />}
+          />
+          <Route path="/simulasi/kelola" element={<KelolaSimulasi />} />
+          <Route path="/konsultasi" element={<Konsultasi />} />
+          <Route path="/konsultasi/:instructorId" element={<Konsultasi />} />
+          <Route
+            path="/konsultasi/student/:studentId"
+            element={<Konsultasi />}
+          />
+          <Route
+            path="/laporan-pembelajaran"
+            element={<LaporanPembelajaran />}
+          />
+          <Route
+            path="/laporan-pembelajaran/detail"
+            element={<DetailLaporan />}
+          />
+          <Route path="/notifications" element={<Notifications />} />
+        </Route> */}
 
         {/* Rute default, arahkan ke login */}
         <Route path="/" element={<LoginPage />} />

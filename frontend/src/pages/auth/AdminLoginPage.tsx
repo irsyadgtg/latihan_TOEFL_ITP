@@ -22,50 +22,67 @@ const AdminLoginPage: React.FC = () => {
 
     try {
       // Endpoint login yang sama, backend akan menentukan role
-      const response = await axiosInstance.post('/login', {
+      const response = await axiosInstance.post("/login", {
         login: identifier,
         password: password,
       });
 
       const authToken = response.data.token;
-      const userData = response.data.user; 
+      const userData = response.data.user;
 
       // --- BAGIAN PENTING YANG DIKOREKSI: PASTIKAN ROLE ADALAH 'admin' ---
-      if (userData.role === 'admin') {
-        localStorage.setItem('AuthToken', authToken); // Gunakan kunci 'AuthToken'
-        localStorage.setItem('userData', JSON.stringify(userData)); 
-        console.log('Login admin berhasil:', response.data.message);
-        navigate('/admin/dashboard'); // Arahkan ke dashboard admin
+      if (userData.role === "admin") {
+        localStorage.setItem("AuthToken", authToken); // Gunakan kunci 'AuthToken'
+        localStorage.setItem("userData", JSON.stringify(userData));
+
+        // Simpan role di localStorage
+        localStorage.setItem("role", userData.role);
+        console.log("Role disimpan di localStorage:", userData.role);
+
+        console.log("Login admin berhasil:", response.data.message);
+        navigate("/admin/dashboard"); // Arahkan ke dashboard admin
       } else {
         // Jika login berhasil tapi role BUKAN admin, tolak login dari sini
-        setError("Akun Anda bukan Admin. Silakan login melalui halaman yang sesuai.");
+        setError(
+          "Akun Anda bukan Admin. Silakan login melalui halaman yang sesuai."
+        );
         console.warn("Login berhasil, namun role bukan admin:", userData.role);
         // Penting: Jangan simpan token jika role tidak sesuai
       }
+    } catch (err: unknown) {
+      // 'unknown' adalah praktik terbaik untuk tipe error
+      console.error("Login admin gagal:", err);
 
-    } catch (err: unknown) { // 'unknown' adalah praktik terbaik untuk tipe error
-      console.error('Login admin gagal:', err); 
-
-      if (axios.isAxiosError(err)) { 
+      if (axios.isAxiosError(err)) {
         const responseData = err.response?.data; // Ambil data respons, bisa undefined
 
         // Tangani 401 (Unauthorized) atau 403 (Forbidden)
         if (err.response?.status === 401 || err.response?.status === 403) {
-          setError(responseData?.message || 'Login gagal. Periksa kembali email/username dan password Anda.');
-        } else if (responseData && responseData.errors) { // Tangani error validasi dari Laravel
+          setError(
+            responseData?.message ||
+              "Login gagal. Periksa kembali email/username dan password Anda."
+          );
+        } else if (responseData && responseData.errors) {
+          // Tangani error validasi dari Laravel
           const validationErrors = Object.keys(responseData.errors)
-            .map(key => `${key}: ${responseData.errors[key].join(', ')}`)
-            .join('; '); 
+            .map((key) => `${key}: ${responseData.errors[key].join(", ")}`)
+            .join("; ");
           setError(`Validasi Gagal: ${validationErrors}`);
-        } else if (responseData && responseData.message) { // Tangani pesan error umum dari backend
+        } else if (responseData && responseData.message) {
+          // Tangani pesan error umum dari backend
           setError(responseData.message);
-        } else { // Error HTTP lain yang tidak spesifik
-          setError(`Error: ${err.response?.status} - ${err.response?.statusText}`);
+        } else {
+          // Error HTTP lain yang tidak spesifik
+          setError(
+            `Error: ${err.response?.status} - ${err.response?.statusText}`
+          );
         }
-      } else if (err instanceof Error) { // Tangani error JavaScript standar
+      } else if (err instanceof Error) {
+        // Tangani error JavaScript standar
         setError(`Terjadi kesalahan: ${err.message}`);
-      } else { // Tangani error yang tidak teridentifikasi
-        setError('Terjadi kesalahan tidak dikenal.');
+      } else {
+        // Tangani error yang tidak teridentifikasi
+        setError("Terjadi kesalahan tidak dikenal.");
       }
     } finally {
       setLoading(false); // Selesai loading
@@ -85,7 +102,10 @@ const AdminLoginPage: React.FC = () => {
 
       <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
         <div>
-          <label htmlFor="identifier" className="block text-sm font-medium text-gray-700">
+          <label
+            htmlFor="identifier"
+            className="block text-sm font-medium text-gray-700"
+          >
             Masukkan (E-mail/Username)
           </label>
           <div className="mt-1">
@@ -102,7 +122,10 @@ const AdminLoginPage: React.FC = () => {
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+          <label
+            htmlFor="password"
+            className="block text-sm font-medium text-gray-700"
+          >
             Password
           </label>
           <div className="mt-1 relative">
@@ -120,7 +143,11 @@ const AdminLoginPage: React.FC = () => {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute inset-y-0 right-0 flex items-center pr-3"
             >
-              {showPassword ? ( <EyeOff className="h-5 w-5 text-gray-400" /> ) : ( <Eye className="h-5 w-5 text-gray-400" /> )}
+              {showPassword ? (
+                <EyeOff className="h-5 w-5 text-gray-400" />
+              ) : (
+                <Eye className="h-5 w-5 text-gray-400" />
+              )}
             </button>
           </div>
         </div>

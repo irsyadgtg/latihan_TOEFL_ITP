@@ -8,6 +8,7 @@ use App\Models\Transaksi;
 use App\Models\PesertaPaketKursus;
 use App\Models\PaketKursus;
 use App\Models\Pegawai;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class AdminTransaksiController extends Controller
@@ -121,7 +122,7 @@ class AdminTransaksiController extends Controller
         });
         } else {
             // Optional: bisa juga logging, atau minimal return warning
-            \Log::warning('Email pengguna kosong untuk peserta id: ' . $peserta->id);
+            \Log::warning('Email pengguna kosong untuk peserta id: ' . $peserta->idPengguna);
         }
 
         return response()->json(['message' => 'Status transaksi berhasil diperbarui']);
