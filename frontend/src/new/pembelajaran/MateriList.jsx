@@ -40,7 +40,13 @@ function MateriList() {
     error: null,
   });
 
+  // FIXED: Urutan modul diubah menjadi listening → structure → reading
   const modulList = [
+    {
+      id: "listening",
+      name: "Materi Listening", 
+      color: "#B6252A",
+    },
     {
       id: "structure",
       name: "Materi Structure",
@@ -49,11 +55,6 @@ function MateriList() {
     {
       id: "reading", 
       name: "Materi Reading",
-      color: "#B6252A",
-    },
-    {
-      id: "listening",
-      name: "Materi Listening", 
       color: "#B6252A",
     },
   ];

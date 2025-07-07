@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class PageController extends Controller
 {
@@ -36,7 +37,7 @@ class PageController extends Controller
                 if (!in_array($requestedModul, ['listening', 'structure', 'reading'])) {
                     return response()->json(['error' => 'Modul tidak valid'], 400);
                 }
-                
+
                 // Jika request unit spesifik juga
                 $requestedUnit = $request->query('unit_number');
                 if ($requestedUnit !== null) {
@@ -238,7 +239,7 @@ class PageController extends Controller
 
         $path = $request->file('file')->store('attachments', 'public');
 
-        return response()->json(['url' => '/storage/' . $path]);
+        return response()->json(['url' => Storage::url($path)]);  // ← SUDAH DIPERBAIKI
     }
 
     public function store(Request $request)
@@ -268,9 +269,8 @@ class PageController extends Controller
             // Handle file upload
             if ($request->hasFile('attachment')) {
                 $path = $request->file('attachment')->store('attachments', 'public');
-                $data['attachment'] = '/storage/' . $path;
+                $data['attachment'] = Storage::url($path);  // ← SUDAH DIPERBAIKI
             }
-
             return DB::transaction(function () use ($data) {
                 // Make space for new page at target position
                 $this->shiftPagesInUnit($data['modul'], $data['unit_number'], $data['order_number'], 'down');
@@ -319,7 +319,7 @@ class PageController extends Controller
             // Handle file upload
             if ($request->hasFile('attachment')) {
                 $path = $request->file('attachment')->store('attachments', 'public');
-                $data['attachment'] = '/storage/' . $path;
+                $data['attachment'] = Storage::url($path);  // ← SUDAH DIPERBAIKI
             }
 
             return DB::transaction(function () use ($page, $data) {

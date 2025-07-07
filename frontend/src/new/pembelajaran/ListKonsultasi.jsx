@@ -11,44 +11,33 @@ export default function ListKonsultasi() {
   const [studentConsultations, setStudentConsultations] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // NEW: Access control state
+  // Access control state
   const [hasConsultationAccess, setHasConsultationAccess] = useState(true);
   const [accessInfo, setAccessInfo] = useState(null);
 
   const navigate = useNavigate();
-  const role = localStorage.getItem("role");
 
+  // 🔧 FIXED: URL-based role detection
   const getCurrentRole = () => {
-  const storedRole = localStorage.getItem("role");
-  const pathname = window.location.pathname;
-  
-  // IMMEDIATE redirect jika role mismatch  
-  if (storedRole === "peserta" && pathname.includes("/instructor/")) {
-    window.location.replace("/student/konsultasi");
-    return "peserta";
-  }
-  
-  if (storedRole === "instruktur" && pathname.includes("/student/")) {
-    window.location.replace("/instructor/konsultasi");
-    return "instruktur";
-  }
-  
-  // PRIORITASKAN localStorage role, bukan URL
-  return storedRole;
-};
+    const storedRole = localStorage.getItem("role");
+    const pathname = window.location.pathname;
+    
+    // IMMEDIATE redirect jika role mismatch  
+    if (storedRole === "peserta" && pathname.includes("/instructor/")) {
+      window.location.replace("/student/konsultasi");
+      return "peserta";
+    }
+    
+    if (storedRole === "instruktur" && pathname.includes("/student/")) {
+      window.location.replace("/instructor/konsultasi");
+      return "instruktur";
+    }
+    
+    // PRIORITASKAN localStorage role, bukan URL
+    return storedRole;
+  };
 
   const currentRole = getCurrentRole();
-
-  
-
-  
-
-  
-
-  // DEBUG: Log both roles
-  console.log("Current role from localStorage:", storedRole);
-  console.log("Current role from URL:", currentRole);
-  console.log("Current pathname:", window.location.pathname);
 
   const getBasePath = () => {
     if (currentRole === "instruktur") {
@@ -57,13 +46,9 @@ export default function ListKonsultasi() {
     return "/student"; // Default untuk peserta
   };
 
-  
-
   useEffect(() => {
     checkConsultationAccess();
     loadData();
-
-    
   }, []);
 
   const checkConsultationAccess = async () => {
@@ -101,7 +86,7 @@ export default function ListKonsultasi() {
   const loadData = async () => {
     try {
       setLoading(true);
-      console.log("ListKonsultasi: Loading data for role:", role);
+      console.log("ListKonsultasi: Loading data for role:", currentRole);
 
       if (currentRole === "peserta") {
         const response = await axiosInstance.get("/consultations/instructors");
@@ -120,21 +105,11 @@ export default function ListKonsultasi() {
         }
       } else if (currentRole === "instruktur") {
         const response = await axiosInstance.get("/consultations/students");
-        console.log(
-          "ListKonsultasi: Student consultations loaded:",
-          response.data
-        );
+        console.log("ListKonsultasi: Student consultations loaded:", response.data);
         setStudentConsultations(response.data);
       }
     } catch (error) {
       console.error("Error loading data:", error);
-      console.error("Error response:", error.response?.data);
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        localStorage.removeItem("AuthToken");
-        localStorage.removeItem("role");
-        navigate("/login");
-        return;
-      }
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         localStorage.removeItem("AuthToken");
         localStorage.removeItem("role");
@@ -153,33 +128,25 @@ export default function ListKonsultasi() {
     }
 
     if (!instructor.is_available) {
-      alert(
-        "Instruktur sedang tidak tersedia saat ini. Silakan pilih instruktur lain atau coba lagi nanti."
-      );
+      alert("Instruktur sedang tidak tersedia saat ini. Silakan pilih instruktur lain atau coba lagi nanti.");
       return;
     }
 
-    console.log(
-      "ListKonsultasi: Student selecting instructor ID:",
-      instructor.id
-    );
+    console.log("ListKonsultasi: Student selecting instructor ID:", instructor.id);
     navigate(`${getBasePath()}/konsultasi/${instructor.id}`);
   };
 
   const handleStudentSelect = (consultation) => {
-    console.log(
-      "ListKonsultasi: Instructor selecting student ID:",
-      consultation.student_id
-    );
+    console.log("ListKonsultasi: Instructor selecting student ID:", consultation.student_id);
     navigate(`${getBasePath()}/konsultasi/student/${consultation.student_id}`);
   };
 
   const handleUpgradePackage = () => {
-    navigate(`${getBasePath()}/paket-kursus`);
+    navigate(`${getBasePath()}/langganan`);
   };
 
   const handleCreateLearningPlan = () => {
-    navigate(`${getBasePath()}/rencana-belajar`);
+    navigate(`${getBasePath()}/rencana`);
   };
 
   const getStatusBadge = (status) => {
@@ -218,11 +185,7 @@ export default function ListKonsultasi() {
   };
 
   const formatAvailabilityTime = (availabilityInfo) => {
-    if (
-      !availabilityInfo.date ||
-      !availabilityInfo.start_time ||
-      !availabilityInfo.end_time
-    ) {
+    if (!availabilityInfo || !availabilityInfo.date || !availabilityInfo.start_time || !availabilityInfo.end_time) {
       return "Belum ada jadwal";
     }
 
@@ -287,55 +250,44 @@ export default function ListKonsultasi() {
 
   if (loading) {
     return (
-      <div
-        style={{
-          padding: "2rem",
-          textAlign: "center",
-          fontFamily: "'Poppins', sans-serif",
-        }}
-      >
+      <div style={{
+        padding: "2rem",
+        textAlign: "center",
+        fontFamily: "'Poppins', sans-serif",
+      }}>
         <div>Memuat...</div>
-        <div style={{ fontSize: "0.8rem", marginTop: "1rem", color: "#666" }}>
-          Role: {role}
-        </div>
       </div>
     );
   }
 
   if (currentRole !== "peserta" && currentRole !== "instruktur") {
     return (
-      <div
-        style={{
-          padding: "2rem",
-          textAlign: "center",
-          fontFamily: "'Poppins', sans-serif",
-        }}
-      >
+      <div style={{
+        padding: "2rem",
+        textAlign: "center",
+        fontFamily: "'Poppins', sans-serif",
+      }}>
         <h3>Error: Role tidak dikenali</h3>
-        <p>Role Anda: {role}</p>
+        <p>Role Anda: {currentRole}</p>
         <p>Silakan logout dan login ulang.</p>
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        padding: "2rem",
-        maxWidth: "800px",
-        margin: "0 auto",
-        fontFamily: "'Poppins', sans-serif",
-      }}
-    >
+    <div style={{
+      padding: "2rem",
+      maxWidth: "800px",
+      margin: "0 auto",
+      fontFamily: "'Poppins', sans-serif",
+    }}>
       <div style={{ marginBottom: "2rem" }}>
-        <h2
-          style={{
-            margin: "0 0 1rem 0",
-            color: "#495057",
-            fontSize: "1.8rem",
-            fontWeight: "600",
-          }}
-        >
+        <h2 style={{
+          margin: "0 0 1rem 0",
+          color: "#495057",
+          fontSize: "1.8rem",
+          fontWeight: "600",
+        }}>
           Konsultasi
         </h2>
         <p style={{ color: "#666", fontSize: "1rem", margin: 0 }}>
@@ -344,24 +296,19 @@ export default function ListKonsultasi() {
             : "Daftar konsultasi dari peserta"}
         </p>
         {currentRole === "peserta" && (
-          <div
-            style={{
-              marginTop: "1rem",
-              padding: "0.75rem",
-              backgroundColor: "#e7f3ff",
-              borderRadius: "8px",
-              border: "1px solid #b3d9ff",
-            }}
-          >
-            <p
-              style={{
-                margin: 0,
-                fontSize: "0.9rem",
-                color: "#0066cc",
-              }}
-            >
-              <strong>Info:</strong> Hanya instruktur yang sedang tersedia yang
-              dapat dipilih.
+          <div style={{
+            marginTop: "1rem",
+            padding: "0.75rem",
+            backgroundColor: "#e7f3ff",
+            borderRadius: "8px",
+            border: "1px solid #b3d9ff",
+          }}>
+            <p style={{
+              margin: 0,
+              fontSize: "0.9rem",
+              color: "#0066cc",
+            }}>
+              <strong>Info:</strong> Hanya instruktur yang sedang tersedia yang dapat dipilih.
             </p>
           </div>
         )}
@@ -369,48 +316,40 @@ export default function ListKonsultasi() {
 
       {/* ACCESS RESTRICTION WARNING for students */}
       {currentRole === "peserta" && !hasConsultationAccess && accessInfo && (
-        <div
-          style={{
-            marginBottom: "2rem",
-            padding: "2rem",
-            backgroundColor: "#fff3cd",
-            borderRadius: "12px",
-            border: "2px solid #ffeaa7",
-            textAlign: "center",
-          }}
-        >
+        <div style={{
+          marginBottom: "2rem",
+          padding: "2rem",
+          backgroundColor: "#fff3cd",
+          borderRadius: "12px",
+          border: "2px solid #ffeaa7",
+          textAlign: "center",
+        }}>
           <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🔒</div>
-          <h3
-            style={{
-              margin: "0 0 1rem 0",
-              color: "#856404",
-              fontSize: "1.5rem",
-            }}
-          >
+          <h3 style={{
+            margin: "0 0 1rem 0",
+            color: "#856404",
+            fontSize: "1.5rem",
+          }}>
             Akses Konsultasi Terbatas
           </h3>
-          <p
-            style={{
-              margin: "0 0 1rem 0",
-              color: "#856404",
-              fontSize: "1rem",
-              lineHeight: 1.5,
-            }}
-          >
+          <p style={{
+            margin: "0 0 1rem 0",
+            color: "#856404",
+            fontSize: "1rem",
+            lineHeight: 1.5,
+          }}>
             {accessInfo.message}
           </p>
 
           {accessInfo.current_package && (
-            <div
-              style={{
-                backgroundColor: "#fff8e1",
-                padding: "1rem",
-                borderRadius: "8px",
-                marginTop: "1rem",
-                fontSize: "0.9rem",
-                color: "#795548",
-              }}
-            >
+            <div style={{
+              backgroundColor: "#fff8e1",
+              padding: "1rem",
+              borderRadius: "8px",
+              marginTop: "1rem",
+              fontSize: "0.9rem",
+              color: "#795548",
+            }}>
               <strong>Paket Saat Ini:</strong> {accessInfo.current_package}
               {accessInfo.package_facilities && (
                 <>
@@ -428,24 +367,20 @@ export default function ListKonsultasi() {
       {currentRole === "peserta" && (
         <div style={{ display: "grid", gap: "1rem" }}>
           {instructors.length === 0 ? (
-            <div
-              style={{
-                padding: "2rem",
-                textAlign: "center",
-                backgroundColor: "#f8f9fa",
-                borderRadius: "8px",
-                border: "1px solid #dee2e6",
-              }}
-            >
+            <div style={{
+              padding: "2rem",
+              textAlign: "center",
+              backgroundColor: "#f8f9fa",
+              borderRadius: "8px",
+              border: "1px solid #dee2e6",
+            }}>
               <p style={{ color: "#666", margin: 0 }}>
                 Tidak ada instruktur yang tersedia
               </p>
             </div>
           ) : (
             instructors.map((instructor) => {
-              const availabilityStyle = getAvailabilityBadge(
-                instructor.is_available
-              );
+              const availabilityStyle = getAvailabilityBadge(instructor.is_available);
               const canClick = hasConsultationAccess && instructor.is_available;
 
               return (
@@ -484,85 +419,70 @@ export default function ListKonsultasi() {
                     }
                   }}
                 >
-                  <div
-                    style={{
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "1rem",
+                  }}>
+                    <div style={{
+                      width: "50px",
+                      height: "50px",
+                      borderRadius: "50%",
+                      backgroundColor: canClick ? "#B6252A" : "#6c757d",
                       display: "flex",
                       alignItems: "center",
-                      gap: "1rem",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "50px",
-                        height: "50px",
-                        borderRadius: "50%",
-                        backgroundColor: canClick ? "#B6252A" : "#6c757d",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "1.25rem",
-                        fontWeight: "600",
-                        color: "white",
-                      }}
-                    >
+                      justifyContent: "center",
+                      fontSize: "1.25rem",
+                      fontWeight: "600",
+                      color: "white",
+                    }}>
                       {instructor.name.charAt(0).toUpperCase()}
                     </div>
 
                     <div style={{ flex: 1 }}>
-                      <h3
-                        style={{
-                          margin: 0,
-                          fontSize: "1.25rem",
-                          fontWeight: "600",
-                          color: "#333",
-                        }}
-                      >
+                      <h3 style={{
+                        margin: 0,
+                        fontSize: "1.25rem",
+                        fontWeight: "600",
+                        color: "#333",
+                      }}>
                         {instructor.name}
                       </h3>
-                      <p
-                        style={{
-                          margin: "0.25rem 0",
-                          color: "#666",
-                          fontSize: "0.9rem",
-                        }}
-                      >
-                        Instruktur • Jam Kerja:{" "}
-                        {formatAvailabilityTime(instructor.availability_info)}
+                      <p style={{
+                        margin: "0.25rem 0",
+                        color: "#666",
+                        fontSize: "0.9rem",
+                      }}>
+                        Instruktur • Jam Kerja: {formatAvailabilityTime(instructor.availability_info)}
                       </p>
-                      <div
-                        style={{
-                          marginTop: "0.5rem",
-                          display: "flex",
-                          gap: "0.5rem",
-                          alignItems: "center",
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        <div
-                          style={{
-                            padding: "0.25rem 0.5rem",
-                            backgroundColor: availabilityStyle.backgroundColor,
-                            color: availabilityStyle.color,
-                            borderRadius: "12px",
-                            fontSize: "0.75rem",
-                            fontWeight: "600",
-                          }}
-                        >
+                      <div style={{
+                        marginTop: "0.5rem",
+                        display: "flex",
+                        gap: "0.5rem",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                      }}>
+                        <div style={{
+                          padding: "0.25rem 0.5rem",
+                          backgroundColor: availabilityStyle.backgroundColor,
+                          color: availabilityStyle.color,
+                          borderRadius: "12px",
+                          fontSize: "0.75rem",
+                          fontWeight: "600",
+                        }}>
                           {availabilityStyle.text}
                         </div>
 
                         {/* Show access restriction indicator */}
                         {!hasConsultationAccess && (
-                          <div
-                            style={{
-                              padding: "0.25rem 0.5rem",
-                              backgroundColor: "#f8d7da",
-                              color: "#721c24",
-                              borderRadius: "12px",
-                              fontSize: "0.75rem",
-                              fontWeight: "600",
-                            }}
-                          >
+                          <div style={{
+                            padding: "0.25rem 0.5rem",
+                            backgroundColor: "#f8d7da",
+                            color: "#721c24",
+                            borderRadius: "12px",
+                            fontSize: "0.75rem",
+                            fontWeight: "600",
+                          }}>
                             {accessInfo?.action_needed === "upgrade_package"
                               ? "PERLU UPGRADE PAKET"
                               : "PERLU RENCANA BELAJAR"}
@@ -570,50 +490,40 @@ export default function ListKonsultasi() {
                         )}
 
                         {!instructor.is_available && hasConsultationAccess && (
-                          <span
-                            style={{
-                              fontSize: "0.8rem",
-                              color: "#666",
-                              fontStyle: "italic",
-                            }}
-                          >
+                          <span style={{
+                            fontSize: "0.8rem",
+                            color: "#666",
+                            fontStyle: "italic",
+                          }}>
                             (Klik untuk melihat jadwal)
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div
-                      style={{
-                        color: canClick ? "#B6252A" : "#6c757d",
-                        fontSize: "1.5rem",
-                        opacity: canClick ? 1 : 0.5,
-                      }}
-                    >
+                    <div style={{
+                      color: canClick ? "#B6252A" : "#6c757d",
+                      fontSize: "1.5rem",
+                      opacity: canClick ? 1 : 0.5,
+                    }}>
                       →
                     </div>
                   </div>
 
-                  {!instructor.is_available &&
-                    instructor.availability_info.date && (
-                      <div
-                        style={{
-                          marginTop: "1rem",
-                          padding: "0.75rem",
-                          backgroundColor: "#fff3cd",
-                          borderRadius: "6px",
-                          fontSize: "0.8rem",
-                          color: "#856404",
-                        }}
-                      >
-                        <strong>Jadwal hari ini:</strong>{" "}
-                        {formatAvailabilityTime(instructor.availability_info)}
-                        <br />
-                        <em>
-                          Instruktur akan tersedia dalam jam kerja tersebut
-                        </em>
-                      </div>
-                    )}
+                  {!instructor.is_available && instructor.availability_info && instructor.availability_info.date && (
+                    <div style={{
+                      marginTop: "1rem",
+                      padding: "0.75rem",
+                      backgroundColor: "#fff3cd",
+                      borderRadius: "6px",
+                      fontSize: "0.8rem",
+                      color: "#856404",
+                    }}>
+                      <strong>Jadwal hari ini:</strong> {formatAvailabilityTime(instructor.availability_info)}
+                      <br />
+                      <em>Instruktur akan tersedia dalam jam kerja tersebut</em>
+                    </div>
+                  )}
                 </div>
               );
             })
@@ -624,15 +534,13 @@ export default function ListKonsultasi() {
       {currentRole === "instruktur" && (
         <div style={{ display: "grid", gap: "1rem" }}>
           {studentConsultations.length === 0 ? (
-            <div
-              style={{
-                padding: "2rem",
-                textAlign: "center",
-                backgroundColor: "#f8f9fa",
-                borderRadius: "8px",
-                border: "1px solid #dee2e6",
-              }}
-            >
+            <div style={{
+              padding: "2rem",
+              textAlign: "center",
+              backgroundColor: "#f8f9fa",
+              borderRadius: "8px",
+              border: "1px solid #dee2e6",
+            }}>
               <p style={{ color: "#666", margin: 0 }}>
                 Belum ada konsultasi dari peserta
               </p>
@@ -664,67 +572,54 @@ export default function ListKonsultasi() {
                   e.target.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05)";
                 }}
               >
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}
-                >
-                  <div
-                    style={{
-                      width: "50px",
-                      height: "50px",
-                      borderRadius: "50%",
-                      backgroundColor: "#28a745",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "1.25rem",
-                      fontWeight: "600",
-                      color: "white",
-                    }}
-                  >
+                <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                  <div style={{
+                    width: "50px",
+                    height: "50px",
+                    borderRadius: "50%",
+                    backgroundColor: "#28a745",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "1.25rem",
+                    fontWeight: "600",
+                    color: "white",
+                  }}>
                     {consultation.student?.username?.charAt(0).toUpperCase() ||
                       consultation.student?.name?.charAt(0).toUpperCase() ||
-                      "S"}
+                      "P"}
                   </div>
 
                   <div style={{ flex: 1 }}>
-                    <h3
-                      style={{
-                        margin: 0,
-                        fontSize: "1.25rem",
-                        fontWeight: "600",
-                        color: "#333",
-                      }}
-                    >
+                    <h3 style={{
+                      margin: 0,
+                      fontSize: "1.25rem",
+                      fontWeight: "600",
+                      color: "#333",
+                    }}>
                       {consultation.student?.username ||
                         consultation.student?.name ||
                         "Peserta"}
                     </h3>
-                    <p
-                      style={{
-                        margin: "0.25rem 0",
-                        color: "#666",
-                        fontSize: "0.9rem",
-                      }}
-                    >
-                      {consultation.latest_message?.message ||
-                        "Konsultasi dimulai"}
+                    <p style={{
+                      margin: "0.25rem 0",
+                      color: "#666",
+                      fontSize: "0.9rem",
+                    }}>
+                      {consultation.latest_message?.message || "Konsultasi dimulai"}
                     </p>
                     <div style={{ fontSize: "0.8rem", color: "#999" }}>
                       {consultation.latest_message &&
-                        new Date(
-                          consultation.latest_message.created_at
-                        ).toLocaleString("id-ID")}
+                        new Date(consultation.latest_message.created_at).toLocaleString("id-ID")}
                     </div>
                   </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "flex-end",
-                      gap: "0.5rem",
-                    }}
-                  >
+                  <div style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-end",
+                    gap: "0.5rem",
+                  }}>
                     {getStatusBadge(consultation.status)}
                     <div style={{ color: "#B6252A", fontSize: "1.5rem" }}>
                       →

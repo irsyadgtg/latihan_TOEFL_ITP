@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useDashboardLayoutContext } from "../../layouts/DashboardLayout";
 import axiosInstance from "../../services/axios";
 import axios from "axios";
+import { Paperclip, Link, MessageSquare, Lock } from "lucide-react";
 
 export default function Konsultasi() {
   const { setTitle, setSubtitle } = useDashboardLayoutContext();
@@ -40,25 +41,52 @@ export default function Konsultasi() {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const currentUserId = parseInt(localStorage.getItem("idPengguna"));
+  // FIXED: Ambil currentUserId langsung dari API /user endpoint
+  const [currentUserId, setCurrentUserId] = useState(null);
 
-  // 🔧 FIXED: URL-based role detection
+  // Load current user ID dari API
+  useEffect(() => {
+    const fetchCurrentUserId = async () => {
+      try {
+        const response = await axiosInstance.get("/user");
+        if (response.data?.idPengguna) {
+          console.log("✅ Current User ID from API:", response.data.idPengguna);
+          setCurrentUserId(parseInt(response.data.idPengguna));
+        } else {
+          console.error("❌ No idPengguna in API response:", response.data);
+          setCurrentUserId(null);
+        }
+      } catch (error) {
+        console.error("❌ Failed to fetch current user:", error);
+        // FALLBACK: Coba ambil dari localStorage jika API gagal
+        const storedId = localStorage.getItem("idPengguna");
+        if (storedId) {
+          console.log("🔄 Fallback: Using localStorage idPengguna:", storedId);
+          setCurrentUserId(parseInt(storedId));
+        } else {
+          setCurrentUserId(null);
+        }
+      }
+    };
+
+    fetchCurrentUserId();
+  }, []);
+
+  // URL-based role detection
   const getCurrentRole = () => {
-  const storedRole = localStorage.getItem("role");
-  const pathname = window.location.pathname;
+    const storedRole = localStorage.getItem("role");
+    const pathname = window.location.pathname;
 
-  // localStorage role is PRIMARY source of truth
-  if (storedRole) {
-    return storedRole;
-  }
+    if (storedRole) {
+      return storedRole;
+    }
 
-  // Fallback to URL-based detection only if localStorage empty
-  if (pathname.includes("/student/")) return "peserta";
-  if (pathname.includes("/instructor/")) return "instruktur";
-  if (pathname.includes("/admin/")) return "admin";
+    if (pathname.includes("/student/")) return "peserta";
+    if (pathname.includes("/instructor/")) return "instruktur";
+    if (pathname.includes("/admin/")) return "admin";
 
-  return null;
-};
+    return null;
+  };
 
   const currentRole = getCurrentRole();
   const storedRole = localStorage.getItem("role");
@@ -71,39 +99,29 @@ export default function Konsultasi() {
       return;
     }
 
-    // PESERTA trying to access INSTRUCTOR routes
     if (currentRole === "peserta" && pathname.startsWith("/instructor/")) {
-      console.log(
-        "⚠️ Access denied: Peserta trying to access instructor route"
-      );
+      console.log("Access denied: Peserta trying to access instructor route");
       navigate("/student/konsultasi", { replace: true });
       return;
     }
 
-    // INSTRUKTUR trying to access STUDENT routes
     if (currentRole === "instruktur" && pathname.startsWith("/student/")) {
-      console.log(
-        "⚠️ Access denied: Instruktur trying to access student route"
-      );
+      console.log("Access denied: Instruktur trying to access student route");
       navigate("/instructor/konsultasi", { replace: true });
       return;
     }
 
-    // ADMIN trying to access STUDENT/INSTRUCTOR routes
     if (
       currentRole === "admin" &&
       (pathname.startsWith("/student/") || pathname.startsWith("/instructor/"))
     ) {
-      console.log(
-        "⚠️ Access denied: Admin trying to access student/instructor route"
-      );
+      console.log("Access denied: Admin trying to access student/instructor route");
       navigate("/admin/dashboard", { replace: true });
       return;
     }
 
-    // ROLE MISMATCH - localStorage vs URL
     if (storedRole && currentRole !== storedRole) {
-      console.log("⚠️ Role mismatch detected, redirecting to correct path");
+      console.log("Role mismatch detected, redirecting to correct path");
 
       if (storedRole === "peserta") {
         navigate("/student/konsultasi", { replace: true });
@@ -116,25 +134,21 @@ export default function Konsultasi() {
     }
   }, [currentRole, navigate, storedRole]);
 
-  // DEBUG: Log for monitoring
   console.log("Konsultasi - Current role detected:", currentRole);
   console.log("Konsultasi - Current pathname:", window.location.pathname);
   console.log("Konsultasi - Stored role:", storedRole);
 
-  // 🔧 FIXED: getBasePath function
   const getBasePath = () => {
     if (currentRole === "instruktur") {
       return "/instructor";
     }
-    return "/student"; // Default untuk peserta
+    return "/student";
   };
 
   useEffect(() => {
     checkConsultationAccess();
     loadSidebarData();
     loadUnits();
-
-    // 🔧 REMOVED: Auto refresh 30 detik - HAPUS INTERVAL
   }, []);
 
   useEffect(() => {
@@ -193,7 +207,6 @@ export default function Konsultasi() {
       if (currentRole === "peserta") {
         const response = await axiosInstance.get("/consultations/instructors");
 
-        // Handle response structure - backend sekarang return instructors + access info
         if (response.data.instructors) {
           setInstructors(response.data.instructors);
           if (response.data.has_access !== undefined) {
@@ -201,7 +214,6 @@ export default function Konsultasi() {
             setAccessInfo(response.data.access_info);
           }
         } else {
-          // Fallback untuk response lama
           setInstructors(response.data);
         }
       } else if (currentRole === "instruktur") {
@@ -243,7 +255,6 @@ export default function Konsultasi() {
         return;
       }
       if (error.response?.status === 403) {
-        // Handle access denied
         if (error.response.data.access_info) {
           setAccessInfo(error.response.data.access_info);
           setHasConsultationAccess(false);
@@ -270,7 +281,6 @@ export default function Konsultasi() {
         navigate("/login");
         return;
       }
-      // Fallback jika error - hanya unit overview
       setUnits({
         listening: [0],
         structure: [0],
@@ -280,15 +290,12 @@ export default function Konsultasi() {
   };
 
   const handleUserSelect = (userId, isAvailable = true) => {
-    // Cek akses konsultasi untuk peserta
     if (currentRole === "peserta" && !hasConsultationAccess) {
-      return; // Tidak bisa klik sama sekali
+      return;
     }
 
     if (currentRole === "peserta" && !isAvailable) {
-      alert(
-        "Instruktur sedang tidak tersedia saat ini. Silakan pilih instruktur lain atau coba lagi nanti."
-      );
+      alert("Instruktur sedang tidak tersedia saat ini. Silakan pilih instruktur lain atau coba lagi nanti.");
       return;
     }
 
@@ -299,7 +306,6 @@ export default function Konsultasi() {
     }
   };
 
-  // 🔧 FIXED: Navigation dengan getBasePath()
   const handleUpgradePackage = () => {
     navigate(`${getBasePath()}/langganan`);
   };
@@ -346,7 +352,6 @@ export default function Konsultasi() {
         );
       }
 
-      // Handle all_messages from response (fix for session markers)
       if (response.data.all_messages) {
         setMessages(response.data.all_messages);
       } else {
@@ -373,7 +378,6 @@ export default function Konsultasi() {
         return;
       }
       if (error.response?.status === 403) {
-        // Handle access error
         if (error.response.data.access_info) {
           setAccessInfo(error.response.data.access_info);
           setHasConsultationAccess(false);
@@ -381,23 +385,15 @@ export default function Konsultasi() {
           alert("Instruktur sedang tidak tersedia saat ini");
         }
       } else {
-        alert(
-          "Gagal mengirim pesan: " +
-            (error.response?.data?.message || error.message)
-        );
+        alert("Gagal mengirim pesan: " + (error.response?.data?.message || error.message));
       }
     }
   };
 
   const handleEndSession = async () => {
-    if (!window.confirm("Yakin ingin mengakhiri sesi konsultasi?")) return;
-
     try {
-      const response = await axiosInstance.post(
-        `/consultations/${consultation.id}/end-session`
-      );
+      const response = await axiosInstance.post(`/consultations/${consultation.id}/end-session`);
 
-      // Update messages with session end marker
       if (response.data.all_messages) {
         setMessages(response.data.all_messages);
       }
@@ -417,10 +413,7 @@ export default function Konsultasi() {
       } else if (error.response?.status === 404) {
         alert("Konsultasi tidak ditemukan");
       } else {
-        alert(
-          "Gagal mengakhiri sesi: " +
-            (error.response?.data?.message || error.message)
-        );
+        alert("Gagal mengakhiri sesi: " + (error.response?.data?.message || error.message));
       }
     }
   };
@@ -475,8 +468,8 @@ export default function Konsultasi() {
       return "Belum ada jadwal";
     }
 
-    const startTime = availabilityInfo.start_time.substring(0, 5); // HH:MM
-    const endTime = availabilityInfo.end_time.substring(0, 5); // HH:MM
+    const startTime = availabilityInfo.start_time.substring(0, 5);
+    const endTime = availabilityInfo.end_time.substring(0, 5);
 
     return `${startTime} - ${endTime}`;
   };
@@ -532,8 +525,7 @@ export default function Konsultasi() {
     }
   };
 
-  // 🔧 FIXED: renderReference dengan event prevention dan debug
-  // 🔧 QUICK FIX - GANTI renderReference() FUNCTION dengan ini:
+// LANJUTAN DARI PART 1...
 
   const renderReference = (msg) => {
     if (!msg.reference_modul) return null;
@@ -543,9 +535,7 @@ export default function Konsultasi() {
     let displayDescription = "";
 
     if (msg.reference_modul && msg.reference_unit_number) {
-      targetUrl = `${getBasePath()}/materi/${msg.reference_modul}?unit=${
-        msg.reference_unit_number
-      }`;
+      targetUrl = `${getBasePath()}/materi/${msg.reference_modul}?unit=${msg.reference_unit_number}`;
       if (msg.reference_unit_number === 0) {
         displayTitle = `Unit Overview`;
         displayDescription = `${msg.reference_modul.toUpperCase()}`;
@@ -561,22 +551,14 @@ export default function Konsultasi() {
       return null;
     }
 
-    // 🔧 DEBUG LOG - CEK INI DI CONSOLE
-    const handleDebugClick = () => {
-      console.log("🔍 REFERENCE DEBUG:");
-      console.log("Current Role:", currentRole);
-      console.log("Base Path:", getBasePath());
-      console.log("Target URL:", targetUrl);
-      console.log("Current Location:", window.location.href);
-      console.log("Full Target:", `http://localhost:5173${targetUrl}`);
-
-      // 🚀 FORCE NAVIGATION
-      window.location.href = targetUrl;
+    const handleReferenceClick = () => {
+      console.log("Reference clicked:", targetUrl);
+      navigate(targetUrl);
     };
 
     return (
       <div
-        onClick={handleDebugClick}
+        onClick={handleReferenceClick}
         style={{
           padding: "0.75rem 1rem",
           backgroundColor: "#f0f8ff",
@@ -601,19 +583,18 @@ export default function Konsultasi() {
         }}
       >
         <div>
-          <div style={{ fontWeight: "600" }}>REFERENCE: {displayTitle}</div>
+          <div style={{ fontWeight: "600" }}>REFERENSI: {displayTitle}</div>
           <div style={{ fontSize: "0.8rem", opacity: 0.8 }}>
             {displayDescription}
           </div>
         </div>
         <span style={{ marginLeft: "auto", fontSize: "0.8rem" }}>
-          DEBUG CLICK →
+          →
         </span>
       </div>
     );
   };
 
-  // Render access denied message for chat area
   const renderAccessDeniedMessage = () => {
     if (!accessInfo || hasConsultationAccess) return null;
 
@@ -681,10 +662,12 @@ export default function Konsultasi() {
         }}
       >
         <div style={{ textAlign: "center", maxWidth: "500px" }}>
-          <div
-            style={{ fontSize: "4rem", marginBottom: "1.5rem", opacity: 0.6 }}
-          >
-            🔒
+          <div style={{ 
+            display: "flex",
+            justifyContent: "center",
+            marginBottom: "1.5rem"
+          }}>
+            <Lock size={64} color="#B6252A" />
           </div>
           <h3
             style={{
@@ -737,35 +720,37 @@ export default function Konsultasi() {
     if (sidebarLoading) {
       return (
         <div style={{ padding: "2rem", textAlign: "center" }}>
-          <div>Loading...</div>
+          <div>Memuat...</div>
         </div>
       );
     }
 
     if (currentRole === "peserta") {
-      // STUDENT VIEW - List of Instructors with availability
       return (
         <div style={{ display: "grid", gap: "0.5rem" }}>
-          {/* ACCESS WARNING for students without consultation access */}
           {!hasConsultationAccess && accessInfo && (
-            <div
-              style={{
-                padding: "1rem",
-                backgroundColor: "#fff3cd",
-                border: "1px solid #ffeaa7",
-                borderRadius: "8px",
-                marginBottom: "1rem",
-                fontSize: "0.85rem",
-                color: "#856404",
-              }}
-            >
-              <div style={{ fontWeight: "600", marginBottom: "0.5rem" }}>
-                ⚠️ Akses Terbatas
-              </div>
+            <div style={{
+              padding: "1rem",
+              backgroundColor: "#fff3cd",
+              border: "1px solid #ffeaa7",
+              borderRadius: "8px",
+              marginBottom: "1rem",
+              fontSize: "0.85rem",
+              color: "#856404",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "0.5rem"
+            }}>
+              <Lock size={16} style={{ marginTop: "0.1rem", flexShrink: 0 }} />
               <div>
-                {accessInfo.action_needed === "upgrade_package"
-                  ? "Upgrade paket untuk akses konsultasi"
-                  : "Buat rencana belajar terlebih dahulu"}
+                <div style={{ fontWeight: "600", marginBottom: "0.5rem" }}>
+                  Akses Terbatas
+                </div>
+                <div>
+                  {accessInfo.action_needed === "upgrade_package"
+                    ? "Upgrade paket untuk akses konsultasi"
+                    : "Buat rencana belajar terlebih dahulu"}
+                </div>
               </div>
             </div>
           )}
@@ -784,17 +769,14 @@ export default function Konsultasi() {
           ) : (
             instructors.map((instructor) => {
               const isActive = instructor.id == targetId;
-              const availabilityStyle = getAvailabilityBadge(
-                instructor.is_available
-              );
+              const availabilityStyle = getAvailabilityBadge(instructor.is_available);
               const canClick = hasConsultationAccess && instructor.is_available;
 
               return (
                 <div
                   key={instructor.id}
                   onClick={() =>
-                    canClick &&
-                    handleUserSelect(instructor.id, instructor.is_available)
+                    canClick && handleUserSelect(instructor.id, instructor.is_available)
                   }
                   style={{
                     padding: "1rem",
@@ -870,8 +852,7 @@ export default function Konsultasi() {
                           marginBottom: "0.25rem",
                         }}
                       >
-                        Jam:{" "}
-                        {formatAvailabilityTime(instructor.availability_info)}
+                        Jam: {formatAvailabilityTime(instructor.availability_info)}
                       </div>
                       <span
                         style={{
@@ -886,7 +867,6 @@ export default function Konsultasi() {
                         {availabilityStyle.text}
                       </span>
 
-                      {/* Show access restriction indicator */}
                       {!hasConsultationAccess && (
                         <div
                           style={{
@@ -904,7 +884,6 @@ export default function Konsultasi() {
                     </div>
                   </div>
 
-                  {/* Additional availability info for unavailable instructors */}
                   {!instructor.is_available &&
                     instructor.availability_info &&
                     instructor.availability_info.date && (
@@ -931,7 +910,6 @@ export default function Konsultasi() {
         </div>
       );
     } else {
-      // INSTRUCTOR VIEW - List of Student Consultations
       return (
         <div style={{ display: "grid", gap: "0.5rem" }}>
           {studentConsultations.length === 0 ? (
@@ -951,7 +929,7 @@ export default function Konsultasi() {
               const userName =
                 consultation.student?.username ||
                 consultation.student?.name ||
-                "Student";
+                "Peserta";
 
               return (
                 <div
@@ -1002,7 +980,7 @@ export default function Konsultasi() {
                         color: "white",
                       }}
                     >
-                      {userName?.charAt(0)?.toUpperCase() || "S"}
+                      {userName?.charAt(0)?.toUpperCase() || "P"}
                     </div>
 
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -1046,9 +1024,7 @@ export default function Konsultasi() {
                             fontSize: "0.75rem",
                             fontWeight: "600",
                             textTransform: "uppercase",
-                            backgroundColor: getStatusColor(
-                              consultation.status
-                            ),
+                            backgroundColor: getStatusColor(consultation.status),
                             color: "white",
                           }}
                         >
@@ -1078,10 +1054,10 @@ export default function Konsultasi() {
   return (
     <div
       style={{
-        height: "calc(100vh - 120px)", // Subtract header height
+        height: "calc(100vh - 80px)", // FIXED: Kurangi height header DashboardLayout
         display: "flex",
         backgroundColor: "#f8f9fa",
-        overflow: "hidden",
+        overflow: "hidden", // FIXED: Prevent parent scroll
       }}
     >
       {/* USER LIST SIDEBAR */}
@@ -1093,6 +1069,7 @@ export default function Konsultasi() {
           display: "flex",
           flexDirection: "column",
           flexShrink: 0,
+          height: "100%", // FIXED: Full height of parent
         }}
       >
         {/* Header */}
@@ -1112,7 +1089,7 @@ export default function Konsultasi() {
               color: "#495057",
             }}
           >
-            {isInstructor ? "Student Consultations" : "Choose Instructor"}
+            {isInstructor ? "Konsultasi Peserta" : "Pilih Instruktur"}
           </h3>
           {currentRole === "peserta" && (
             <p
@@ -1128,13 +1105,14 @@ export default function Konsultasi() {
           )}
         </div>
 
-        {/* List - SCROLLABLE */}
+        {/* FIXED: List - COMPACT SCROLLABLE */}
         <div
           style={{
             flex: 1,
             overflowY: "auto",
             overflowX: "hidden",
             padding: "1rem",
+            minHeight: 0, // FIXED: Allow flex child to shrink
           }}
         >
           {renderSidebar()}
@@ -1148,6 +1126,8 @@ export default function Konsultasi() {
           display: "flex",
           flexDirection: "column",
           minWidth: 0,
+          height: "100%", // FIXED: Use full parent height
+          overflow: "hidden",
         }}
       >
         {!targetId ? (
@@ -1165,19 +1145,21 @@ export default function Konsultasi() {
             }}
           >
             <div style={{ textAlign: "center", maxWidth: "400px" }}>
-              <div
-                style={{ fontSize: "4rem", marginBottom: "1rem", opacity: 0.5 }}
-              >
-                💬
+              <div style={{ 
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: "1rem"
+              }}>
+                <MessageSquare size={64} color="#dee2e6" />
               </div>
               <h3 style={{ margin: "0 0 1rem 0", color: "#495057" }}>
                 {isInstructor
-                  ? "Pilih Student untuk Memulai Konsultasi"
+                  ? "Pilih Peserta untuk Memulai Konsultasi"
                   : "Pilih Instruktur untuk Memulai Konsultasi"}
               </h3>
               <p style={{ margin: 0, lineHeight: 1.5, opacity: 0.8 }}>
                 {isInstructor
-                  ? "Pilih student dari daftar di sebelah kiri untuk melihat percakapan dan membalas pesan mereka."
+                  ? "Pilih peserta dari daftar di sebelah kiri untuk melihat percakapan dan membalas pesan mereka."
                   : hasConsultationAccess
                   ? "Pilih instruktur dari daftar di sebelah kiri untuk memulai sesi konsultasi. Pastikan instruktur dalam status tersedia."
                   : "Anda perlu mengupgrade paket atau membuat rencana belajar untuk mengakses fitur konsultasi."}
@@ -1185,7 +1167,6 @@ export default function Konsultasi() {
             </div>
           </div>
         ) : !hasConsultationAccess && currentRole === "peserta" ? (
-          // ACCESS DENIED STATE for students
           renderAccessDeniedMessage()
         ) : (
           <>
@@ -1231,7 +1212,7 @@ export default function Konsultasi() {
                       }}
                     >
                       {instructor.name}{" "}
-                      {isInstructor ? "(Student)" : "(Instruktur)"}
+                      {isInstructor ? "(Peserta)" : "(Instruktur)"}
                     </h3>
                     <div
                       style={{
@@ -1275,13 +1256,13 @@ export default function Konsultasi() {
                       fontSize: "0.9rem",
                     }}
                   >
-                    End Session
+                    Akhiri Sesi
                   </button>
                 )}
               </div>
             )}
 
-            {/* Messages - SCROLLABLE AREA */}
+            {/* FIXED: Messages - PERFECTLY SIZED SCROLLABLE */}
             <div
               style={{
                 flex: 1,
@@ -1289,6 +1270,9 @@ export default function Konsultasi() {
                 overflowX: "hidden",
                 padding: "1rem",
                 backgroundColor: "#f8f9fa",
+                minHeight: 0, // FIXED: Critical for flex shrinking
+                display: "flex",
+                flexDirection: "column",
               }}
             >
               {loading ? (
@@ -1299,7 +1283,7 @@ export default function Konsultasi() {
                     marginTop: "2rem",
                   }}
                 >
-                  Loading messages...
+                  Memuat pesan...
                 </div>
               ) : messages.length === 0 ? (
                 <div
@@ -1312,101 +1296,183 @@ export default function Konsultasi() {
                 >
                   {!consultation
                     ? isInstructor
-                      ? "Student belum memulai konsultasi."
+                      ? "Peserta belum memulai konsultasi."
                       : "Mulai konsultasi dengan mengirim pesan pertama!"
                     : consultation.status === "closed"
                     ? isInstructor
-                      ? "Sesi konsultasi telah berakhir. Menunggu student memulai sesi baru."
+                      ? "Sesi konsultasi telah berakhir. Menunggu peserta memulai sesi baru."
                       : "Sesi konsultasi sebelumnya telah berakhir. Kirim pesan untuk memulai sesi baru!"
                     : "Belum ada percakapan. Mulai kirim pesan pertama!"}
                 </div>
               ) : (
-                messages.map((msg, index) => {
-                  if (msg.message_type === "session_marker") {
+                <>
+                  {messages.map((msg, index) => {
+                    if (msg.message_type === "session_marker") {
+                      return (
+                        <div
+                          key={index}
+                          style={{
+                            textAlign: "center",
+                            margin: "1rem 0",
+                            padding: "0.5rem",
+                            color: "#666",
+                            fontSize: "0.8rem",
+                            backgroundColor: "#e9ecef",
+                            borderRadius: "20px",
+                            border: "1px solid #dee2e6",
+                          }}
+                        >
+                          {msg.message}
+                        </div>
+                      );
+                    }
+
+                    // FIXED: Chat Position Logic dengan API-based currentUserId
+                    const msgSenderId = msg.sender_id;
+                    
+                    // FIXED: Fallback jika currentUserId masih null (API belum loaded)
+                    if (currentUserId === null) {
+                      console.warn("⚠️ currentUserId is null (loading or failed), defaulting to left alignment");
+                      // Semua pesan ke kiri jika currentUserId belum diload
+                      const isOwn = false;
+                      
+                      return (
+                        <div
+                          key={index}
+                          style={{
+                            display: "flex",
+                            justifyContent: "flex-start", // Semua ke kiri
+                            marginBottom: "1rem",
+                          }}
+                        >
+                          <div
+                            style={{
+                              maxWidth: "70%",
+                              padding: "1rem",
+                              borderRadius: "16px",
+                              backgroundColor: "white",
+                              color: "#333",
+                              border: "1px solid #dee2e6",
+                              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                            }}
+                          >
+                            <div style={{ marginBottom: "0.5rem" }}>
+                              <strong style={{ fontSize: "0.9rem" }}>
+                                {msg.sender
+                                  ? msg.sender.username || msg.sender.name
+                                  : "Sistem"}
+                              </strong>
+                              <span
+                                style={{
+                                  fontSize: "0.8rem",
+                                  opacity: 0.7,
+                                  marginLeft: "0.5rem",
+                                }}
+                              >
+                                {formatTime(msg.created_at)}
+                              </span>
+                              <div style={{ 
+                                fontSize: "0.7rem", 
+                                color: "#999",
+                                fontStyle: "italic",
+                                marginTop: "0.25rem"
+                              }}>
+                                (Loading user data...)
+                              </div>
+                            </div>
+
+                            {msg.message && (
+                              <div style={{ marginBottom: "0.5rem" }}>
+                                {msg.message}
+                              </div>
+                            )}
+
+                            {msg.attachment && renderAttachment(msg.attachment)}
+                            {renderReference(msg)}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // NORMAL: Logic jika currentUserId berhasil diambil dari API
+                    const isOwn = msgSenderId === currentUserId;
+
+                    console.log('✅ CHAT MESSAGE POSITIONING (API-based):', {
+                      messageIndex: index,
+                      msgSenderId: msgSenderId,
+                      currentUserId: currentUserId,
+                      isOwn: isOwn,
+                      position: isOwn ? 'RIGHT (Own message)' : 'LEFT (Other message)',
+                      backgroundColor: isOwn ? '#B6252A (RED)' : 'white',
+                      senderName: msg.sender?.username || msg.sender?.name
+                    });
+
                     return (
                       <div
                         key={index}
                         style={{
-                          textAlign: "center",
-                          margin: "1rem 0",
-                          padding: "0.5rem",
-                          color: "#666",
-                          fontSize: "0.8rem",
-                          backgroundColor: "#e9ecef",
-                          borderRadius: "20px",
-                          border: "1px solid #dee2e6",
+                          display: "flex",
+                          justifyContent: isOwn ? "flex-end" : "flex-start", // FIXED: USER = KANAN, LAWAN = KIRI
+                          marginBottom: "1rem",
                         }}
                       >
-                        {msg.message}
+                        <div
+                          style={{
+                            maxWidth: "70%",
+                            padding: "1rem",
+                            borderRadius: "16px",
+                            backgroundColor: isOwn ? "#B6252A" : "white", // FIXED: USER = MERAH, LAWAN = PUTIH
+                            color: isOwn ? "white" : "#333",
+                            border: isOwn ? "none" : "1px solid #dee2e6",
+                            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                          }}
+                        >
+                          <div style={{ marginBottom: "0.5rem" }}>
+                            <strong style={{ fontSize: "0.9rem" }}>
+                              {msg.sender
+                                ? msg.sender.username || msg.sender.name
+                                : "Sistem"}
+                            </strong>
+                            <span
+                              style={{
+                                fontSize: "0.8rem",
+                                opacity: 0.7,
+                                marginLeft: "0.5rem",
+                              }}
+                            >
+                              {formatTime(msg.created_at)}
+                            </span>
+                          </div>
+
+                          {msg.message && (
+                            <div style={{ marginBottom: "0.5rem" }}>
+                              {msg.message}
+                            </div>
+                          )}
+
+                          {msg.attachment && renderAttachment(msg.attachment)}
+                          {renderReference(msg)}
+                        </div>
                       </div>
                     );
-                  }
-
-                  const isOwn = msg.sender_id === currentUserId;
-
-                  return (
-                    <div
-                      key={index}
-                      style={{
-                        display: "flex",
-                        justifyContent: isOwn ? "flex-end" : "flex-start",
-                        marginBottom: "1rem",
-                      }}
-                    >
-                      <div
-                        style={{
-                          maxWidth: "70%",
-                          padding: "1rem",
-                          borderRadius: "16px",
-                          backgroundColor: isOwn ? "#B6252A" : "white",
-                          color: isOwn ? "white" : "#333",
-                          border: isOwn ? "none" : "1px solid #dee2e6",
-                          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                        }}
-                      >
-                        <div style={{ marginBottom: "0.5rem" }}>
-                          <strong style={{ fontSize: "0.9rem" }}>
-                            {msg.sender
-                              ? msg.sender.username || msg.sender.name
-                              : "System"}
-                          </strong>
-                          <span
-                            style={{
-                              fontSize: "0.8rem",
-                              opacity: 0.7,
-                              marginLeft: "0.5rem",
-                            }}
-                          >
-                            {formatTime(msg.created_at)}
-                          </span>
-                        </div>
-
-                        {msg.message && (
-                          <div style={{ marginBottom: "0.5rem" }}>
-                            {msg.message}
-                          </div>
-                        )}
-
-                        {msg.attachment && renderAttachment(msg.attachment)}
-                        {renderReference(msg)}
-                      </div>
-                    </div>
-                  );
-                })
+                  })}
+                  {/* FIXED: Scroll anchor di bagian bawah messages */}
+                  <div ref={messagesEndRef} style={{ height: "1px" }} />
+                </>
               )}
-              <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area - FIXED BOTTOM */}
+            {/* FIXED: Input Area - COMPACT BOTTOM */}
             <div
               style={{
                 padding: "1rem",
                 backgroundColor: "white",
                 borderTop: "1px solid #dee2e6",
                 flexShrink: 0,
+                maxHeight: "300px", // FIXED: Prevent input area from growing too much
+                overflowY: "auto", // FIXED: Scroll jika content input terlalu panjang
               }}
             >
-              {/* Access restriction notice for input area */}
               {!hasConsultationAccess && currentRole === "peserta" && (
                 <div
                   style={{
@@ -1426,7 +1492,6 @@ export default function Konsultasi() {
                 </div>
               )}
 
-              {/* Attachment & Reference Indicators */}
               {(attachment || reference.modul) && canSendMessage && (
                 <div
                   style={{
@@ -1447,7 +1512,7 @@ export default function Konsultasi() {
                         marginBottom: "0.25rem",
                       }}
                     >
-                      <span>ATTACHMENT: {attachment.name}</span>
+                      <span>LAMPIRAN: {attachment.name}</span>
                       <button
                         onClick={removeAttachment}
                         style={{
@@ -1464,7 +1529,7 @@ export default function Konsultasi() {
                   )}
                   {reference.modul && (
                     <div>
-                      REFERENCE:{" "}
+                      REFERENSI:{" "}
                       {reference.unit_number
                         ? reference.unit_number === "0"
                           ? `Unit Overview - ${reference.modul.toUpperCase()}`
@@ -1477,7 +1542,6 @@ export default function Konsultasi() {
                 </div>
               )}
 
-              {/* Reference Form */}
               {showReference && canSendMessage && (
                 <div
                   style={{
@@ -1489,10 +1553,9 @@ export default function Konsultasi() {
                   }}
                 >
                   <h4 style={{ margin: "0 0 1rem 0", fontSize: "1rem" }}>
-                    REFERENCE: Tambah Reference
+                    REFERENSI: Tambah Referensi
                   </h4>
 
-                  {/* Info untuk peserta */}
                   {currentRole === "peserta" && (
                     <div
                       style={{
@@ -1510,7 +1573,6 @@ export default function Konsultasi() {
                   )}
 
                   <div style={{ display: "grid", gap: "1rem" }}>
-                    {/* Modul Selection */}
                     <div>
                       <label
                         style={{
@@ -1547,7 +1609,6 @@ export default function Konsultasi() {
                       </select>
                     </div>
 
-                    {/* Unit Selection */}
                     {reference.modul && units[reference.modul] && (
                       <div>
                         <label
@@ -1586,7 +1647,6 @@ export default function Konsultasi() {
                           ))}
                         </select>
 
-                        {/* Show accessible units info for students */}
                         {currentRole === "peserta" &&
                           units[reference.modul] && (
                             <div
@@ -1647,7 +1707,7 @@ export default function Konsultasi() {
                         fontSize: "0.9rem",
                       }}
                     >
-                      Tambah Reference
+                      Tambah Referensi
                     </button>
                   </div>
                 </div>
@@ -1679,10 +1739,15 @@ export default function Konsultasi() {
                     border: "none",
                     borderRadius: "50%",
                     cursor: canSendMessage ? "pointer" : "not-allowed",
-                    fontSize: "0.8rem",
+                    width: "45px",
+                    height: "45px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
+                  title="Lampirkan File"
                 >
-                  FILE
+                  <Paperclip size={18} />
                 </button>
 
                 <button
@@ -1695,10 +1760,15 @@ export default function Konsultasi() {
                     border: "none",
                     borderRadius: "50%",
                     cursor: canSendMessage ? "pointer" : "not-allowed",
-                    fontSize: "0.8rem",
+                    width: "45px",
+                    height: "45px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
+                  title="Tambah Referensi"
                 >
-                  REF
+                  <Link size={18} />
                 </button>
 
                 <input
@@ -1711,11 +1781,11 @@ export default function Konsultasi() {
                       ? "Perlu akses konsultasi untuk mengirim pesan..."
                       : !consultation
                       ? isInstructor
-                        ? "Ketik balasan untuk student..."
+                        ? "Ketik balasan untuk peserta..."
                         : "Ketik pesan untuk memulai konsultasi..."
                       : consultation.status === "closed"
                       ? isInstructor
-                        ? "Menunggu student memulai sesi baru..."
+                        ? "Menunggu peserta memulai sesi baru..."
                         : "Ketik pesan untuk memulai sesi baru..."
                       : "Ketik pesan..."
                   }

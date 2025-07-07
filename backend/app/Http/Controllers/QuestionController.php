@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Exception;
+use Illuminate\Support\Facades\Storage;
 
 class QuestionController extends Controller
 {
@@ -131,7 +132,7 @@ class QuestionController extends Controller
                     if ($modul && $unitNumber !== null) {
                         // Cek akses specific unit
                         $modulUnits = $finalUnlockedUnits[$modul] ?? [];
-                        
+
                         if (!in_array($unitNumber, $modulUnits)) {
                             Log::info('Unit access denied', [
                                 'modul' => $modul,
@@ -156,7 +157,6 @@ class QuestionController extends Controller
                             'unit_number' => $unitNumber,
                             'access_source' => 'learning plan or package'
                         ]);
-
                     } elseif ($modul) {
                         // Filter by modul dan unlocked units
                         $modulUnits = $finalUnlockedUnits[$modul] ?? [];
@@ -168,7 +168,6 @@ class QuestionController extends Controller
                             ]);
                         }
                         $query->where('modul', $modul)->whereIn('unit_number', $modulUnits);
-                        
                     } else {
                         // Semua quiz yang accessible berdasarkan unit access
                         $accessibleQuestions = collect();
@@ -215,7 +214,6 @@ class QuestionController extends Controller
                         'total_questions' => $questions->count(),
                         'questions' => $questions
                     ]);
-
                 } catch (\Exception $e) {
                     Log::error('UnitAccessController failed', [
                         'error' => $e->getMessage(),
@@ -257,7 +255,6 @@ class QuestionController extends Controller
             }
 
             return response()->json(['error' => 'Invalid role'], 403);
-
         } catch (\Exception $e) {
             Log::error('QuestionController index failed', [
                 'error' => $e->getMessage(),
@@ -565,7 +562,7 @@ class QuestionController extends Controller
         // Handle file upload
         if ($request->hasFile('attachment')) {
             $path = $request->file('attachment')->store('attachments', 'public');
-            $data['attachment'] = '/storage/' . $path;
+            $data['attachment'] = Storage::url($path);  // ← SUDAH DIPERBAIKI
         } elseif ($request->filled('attachment')) {
             $data['attachment'] = $request->input('attachment');
         }
@@ -698,7 +695,7 @@ class QuestionController extends Controller
 
             if ($request->hasFile('attachment')) {
                 $path = $request->file('attachment')->store('attachments', 'public');
-                $parentData['attachment'] = '/storage/' . $path;
+                $parentData['attachment'] = Storage::url($path);  // ← SUDAH DIPERBAIKI
             } elseif ($request->filled('attachment')) {
                 $parentData['attachment'] = $request->input('attachment');
             }
@@ -820,7 +817,7 @@ class QuestionController extends Controller
         // Handle file upload
         if ($request->hasFile('attachment')) {
             $path = $request->file('attachment')->store('attachments', 'public');
-            $data['attachment'] = '/storage/' . $path;
+            $data['attachment'] = Storage::url($path);  // ← SUDAH DIPERBAIKI
         } elseif ($request->filled('attachment')) {
             $data['attachment'] = $request->input('attachment');
         }
@@ -961,7 +958,7 @@ class QuestionController extends Controller
 
             if ($request->hasFile('attachment')) {
                 $path = $request->file('attachment')->store('attachments', 'public');
-                $parentData['attachment'] = '/storage/' . $path;
+                $parentData['attachment'] = Storage::url($path);  // ← SUDAH DIPERBAIKI
             } elseif ($request->filled('attachment')) {
                 $parentData['attachment'] = $request->input('attachment');
             }

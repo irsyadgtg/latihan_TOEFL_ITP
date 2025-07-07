@@ -74,6 +74,7 @@ import {
   instructorNavigation,
   studentNavigation,
 } from "../assets/data/navigasi";
+import StudyPlanFeedbackDetail from "../pages/students/StudentPlanFeedback";
 
 const AppRouter = () => {
   // TAMBAH: Function untuk get menu berdasarkan role
