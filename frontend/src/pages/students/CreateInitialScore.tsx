@@ -88,7 +88,7 @@ const CreateInitialScore: React.FC = () => {
       });
 
       setTimeout(() => {
-        navigate("/student/initial-score");
+        navigate("/student/awal");
       }, 2000);
 
     } catch (err: any) {

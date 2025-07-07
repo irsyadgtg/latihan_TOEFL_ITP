@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react'; // Tambahkan useEffect
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react'; // Pastikan lucide-react terinstal
-import axiosInstance from '../../services/axios'; // Import axiosInstance
-import axios, { AxiosError } from 'axios'; // <--- PERBAIKAN: Import axios dan AxiosError
-import { format } from 'date-fns'; // Untuk format tanggal
+import { ArrowLeft } from 'lucide-react';
+import axiosInstance from '../../services/axios';
+import axios, { AxiosError } from 'axios';
+import { format } from 'date-fns';
 
 // --- INTERFACE DATA API (Sesuai output TinjauRencanaBelajarController@show) ---
 interface ApiSkillItem {
@@ -49,10 +49,10 @@ const TabButton = ({ name, activeTab, setActiveTab, skillCount }: TabButtonProps
   <button
     onClick={() => setActiveTab(name)}
     className={`px-4 py-2 text-sm font-semibold focus:outline-none transition-colors duration-200 rounded-full flex items-center gap-2
-            ${activeTab === name
-              ? 'bg-blue-600 text-white'
-              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
-          }`}
+              ${activeTab === name
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+            }`}
   >
     {name} <span className="text-xs px-2 py-0.5 bg-white bg-opacity-30 rounded-full">{skillCount}</span>
   </button>
@@ -83,18 +83,37 @@ const DetailRencanaBelajar: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
+        // Log URL yang diminta untuk debugging
+        console.log(`[DetailRencanaBelajar] Fetching data for /pengajuan-rencana-belajar/${id}`);
+        // Perhatikan URL di sini, di error log Anda itu /peserta/rencana-belajar/11
+        // Pastikan URL API yang benar adalah '/pengajuan-rencana-belajar/${id}'
+        // atau jika di backend itu adalah endpoint instruktur, pastikan '/instructor/rencana-belajar/${id}'
         const response = await axiosInstance.get<InstructorStudyPlanDetailResponse>(`/pengajuan-rencana-belajar/${id}`);
         setDetailData(response.data);
 
-        setSelectedRecommendedSkills({});
+        // Inisialisasi selectedRecommendedSkills berdasarkan data yang ada jika status sudah ada feedback
+        // atau jika ada rekomendasi dari API
+        const initialSelected = response.data.daftar_skill.reduce((acc, skill) => {
+            // Jika Anda ingin skill yang sudah ada feedback default terpilih
+            // Anda perlu properti di API yang mengindikasikan skill tersebut sudah direkomendasikan
+            // Misalnya: skill.isRecommended atau skill.status === 'recommended'
+            // Contoh di bawah mengasumsikan belum ada, jadi semua dimulai dari false
+            acc[skill.id] = false; 
+            return acc;
+        }, {} as Record<number, boolean>);
+        setSelectedRecommendedSkills(initialSelected);
 
-      } catch (err: unknown) { // <--- type 'unknown' ditangani di sini
+      } catch (err: unknown) {
         console.error("Failed to fetch study plan detail:", err);
-        if (axios.isAxiosError(err)) { // <--- Pastikan axios diimpor
-          if (err.response?.status === 401) {
-            setError("Sesi Anda telah berakhir. Silakan login kembali.");
-            localStorage.removeItem('AuthToken');
-            navigate('/instructor/login');
+        if (axios.isAxiosError(err)) {
+          if (err.response?.status === 401 || err.response?.status === 403) { // <-- PERBAIKAN DI SINI
+            // Jika 401 (Unauthenticated) atau 403 (Forbidden/Unauthorized), arahkan ke login
+            setError(err.response.data?.message || "Sesi Anda telah berakhir atau Anda tidak memiliki izin. Silakan login kembali.");
+            localStorage.removeItem('AuthToken'); // Hapus token
+            localStorage.removeItem('userData'); // Hapus data user juga jika disimpan
+            navigate('/instructor/login'); // Arahkan ke halaman login instruktur
+          } else if (err.response?.status === 404) {
+            setError("Detail rencana belajar tidak ditemukan.");
           } else if (err.response?.data && typeof err.response.data === 'object' && 'message' in err.response.data) {
             setError(err.response.data.message as string);
           } else {
@@ -109,7 +128,7 @@ const DetailRencanaBelajar: React.FC = () => {
     };
 
     fetchDetailData();
-  }, [id, navigate]);
+  }, [id, navigate]); // Ditambahkan `id` dan `Maps` ke dependency array
 
   const handleSkillSelection = (skillId: number) => {
     setSelectedRecommendedSkills(prev => ({ ...prev, [skillId]: !prev[skillId] }));
@@ -122,11 +141,12 @@ const DetailRencanaBelajar: React.FC = () => {
     }
 
     const selectedSkillIds = Object.keys(selectedRecommendedSkills)
-                                 .filter(key => selectedRecommendedSkills[Number(key)])
-                                 .map(Number);
+                                   .filter(key => selectedRecommendedSkills[Number(key)])
+                                   .map(Number);
 
     if (selectedSkillIds.length === 0) {
       setError("Anda harus memilih setidaknya satu Unit Skill untuk rekomendasi.");
+      setSuccessMessage(null); // Pastikan success message direset jika ada error baru
       return;
     }
 
@@ -143,14 +163,23 @@ const DetailRencanaBelajar: React.FC = () => {
       setSuccessMessage(response.data.message || 'Feedback berhasil disimpan!');
       console.log("Feedback submitted successfully:", response.data);
 
+      // Navigasi setelah sukses, dan berikan state untuk refresh list
+      // Note: `location.state` tidak digunakan untuk kondisi ini, jadi hapus jika tidak diperlukan.
+      // Jika Anda ingin refresh list di halaman sebelumnya, pastikan komponen daftar juga
+      // membaca state dari `location` untuk memicu fetch ulang.
       navigate('/instructor/tinjau-rencana-belajar', { 
         state: { refreshList: true } 
       });
 
-    } catch (err: unknown) { // <--- type 'unknown' ditangani di sini
+    } catch (err: unknown) {
       console.error("Failed to submit feedback:", err);
-      if (axios.isAxiosError(err)) { // <--- Pastikan axios diimpor
-        if (err.response?.status === 400 && err.response.data && typeof err.response.data === 'object' && 'message' in err.response.data) {
+      if (axios.isAxiosError(err)) {
+        if (err.response?.status === 401 || err.response?.status === 403) { // <-- PERBAIKAN DI SINI
+          setError(err.response.data?.message || "Sesi Anda telah berakhir atau Anda tidak memiliki izin. Silakan login kembali.");
+          localStorage.removeItem('AuthToken');
+          localStorage.removeItem('userData');
+          navigate('/instructor/login');
+        } else if (err.response?.status === 400 && err.response.data && typeof err.response.data === 'object' && 'message' in err.response.data) {
             setError(err.response.data.message as string);
         } else if (err.response?.data && typeof err.response.data === 'object' && 'message' in err.response.data) {
           setError(err.response.data.message as string);
@@ -169,18 +198,35 @@ const DetailRencanaBelajar: React.FC = () => {
     skill.kategori === activeTab
   ) || [];
 
-  const studentWantsToUnderstandSkills = detailData?.detail_pengajuan?.filter(skill =>
-    skill.kategori === activeTab
+  // PERBAIKAN: Gunakan `id` dari `detail_pengajuan` untuk memfilter, bukan `skill` langsung
+  const studentWantsToUnderstandSkills = detailData?.detail_pengajuan?.filter(item =>
+    item.kategori === activeTab
+    // Tambahan: Pastikan skill.deskripsi ada jika ingin ditampilkan
+    // item.skill && item.skill.deskripsi
   ) || [];
 
   const uniqueCategories = Array.from(new Set(detailData?.daftar_skill?.map(skill => skill.kategori) || []));
+
+  // PERBAIKAN: Jika daftar_skill kosong, ambil dari detail_pengajuan untuk tab pertama
+  useEffect(() => {
+    if (detailData && uniqueCategories.length > 0 && !uniqueCategories.includes(activeTab)) {
+      setActiveTab(uniqueCategories[0]);
+    } else if (detailData && uniqueCategories.length === 0 && detailData.detail_pengajuan.length > 0) {
+        // Jika tidak ada daftar_skill (rekomendasi), tapi ada detail_pengajuan,
+        // ambil kategori dari detail_pengajuan untuk set activeTab awal
+        const studentCategories = Array.from(new Set(detailData.detail_pengajuan.map(item => item.kategori)));
+        if (studentCategories.length > 0) {
+            setActiveTab(studentCategories[0]);
+        }
+    }
+  }, [detailData, uniqueCategories, activeTab]);
 
 
   if (loading) {
     return <div className="p-8 text-center text-gray-600">Memuat detail rencana belajar...</div>;
   }
 
-  if (error && !detailData) {
+  if (error && !detailData) { // Jika ada error dan detailData masih null
     return (
       <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-md mt-4 text-center">
         <p>{error}</p>
@@ -220,9 +266,9 @@ const DetailRencanaBelajar: React.FC = () => {
           </button>
         )}
         {detailData.status !== 'pending' && (
-             <span className="px-3 py-1 text-sm font-semibold rounded-full bg-gray-200 text-gray-700">
-               Status: {detailData.status === "sudah ada feedback" ? "Berjalan" : detailData.status}
-             </span>
+           <span className="px-3 py-1 text-sm font-semibold rounded-full bg-gray-200 text-gray-700">
+             Status: {detailData.status === "sudah ada feedback" ? "Berjalan" : detailData.status}
+           </span>
         )}
       </div>
 
@@ -274,7 +320,7 @@ const DetailRencanaBelajar: React.FC = () => {
       {detailData.status === 'pending' && (
         <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm">
           <div className="mb-6">
-            <div className="flex space-x-2 overflow-x-auto pb-2"> {/* overflow-x-auto untuk tab jika terlalu banyak */}
+            <div className="flex space-x-2 overflow-x-auto pb-2">
               {uniqueCategories.map((tab) => (
                 <TabButton 
                   key={tab} 
@@ -294,7 +340,7 @@ const DetailRencanaBelajar: React.FC = () => {
               <ul className="space-y-4">
                 {studentWantsToUnderstandSkills.length > 0 ? (
                   studentWantsToUnderstandSkills.map((item) => (
-                    <li key={`wants-${item.skill.id}`} className="flex items-center gap-3">
+                    <li key={`wants-${item.id_detail_pengajuan}`} className="flex items-center gap-3"> {/* Use id_detail_pengajuan for key */}
                       <div className="relative flex items-center justify-center">
                         <input
                           type="checkbox"
