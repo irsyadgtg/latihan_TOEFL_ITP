@@ -428,7 +428,7 @@ const StudentDashboard: React.FC = () => {
                   color: '#6c757d', 
                   marginBottom: '0.3rem' 
                 }}>
-                  <strong>Masa Berlaku:</strong> {infoPaket.masa_berlaku} hari
+                  <strong>Masa Berlaku:</strong> {infoPaket.masa_berlaku} bulan
                 </div>
                 <div style={{ 
                   fontSize: '0.9rem', 
