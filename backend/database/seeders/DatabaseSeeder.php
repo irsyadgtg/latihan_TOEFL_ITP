@@ -21,8 +21,9 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AdminSeeder::class,
             SkillSeeder::class,
-            SimulationSetSeeder::class,
             TestDataSeeder::class,
+
+            // MediaDownloadSeeder::class,
             QuestionSeeder::class,
             PageSeeder::class,
             SimulationQuestionsSeeder::class,

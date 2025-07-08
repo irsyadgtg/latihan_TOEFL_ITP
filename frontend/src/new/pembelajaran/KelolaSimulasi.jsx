@@ -3,6 +3,7 @@ import { useDashboardLayoutContext } from "../../layouts/DashboardLayout";
 import axiosInstance from "../../services/axios";
 import axios, { AxiosError } from "axios";
 import React, { useState, useEffect } from "react";
+import Confirm from "../shared/components/Confirm";
 
 const MODULS = ["listening", "structure", "reading"];
 
@@ -26,30 +27,29 @@ export default function KelolaSimulasi() {
 
   // TAMBAH di awal component:
   // Di Simulasi.jsx, GANTI getCurrentRole function:
-const getCurrentRole = () => {
-  const storedRole = localStorage.getItem("role");
-  const pathname = window.location.pathname;
-  
-  // IMMEDIATE redirect jika role mismatch  
-  if (storedRole === "peserta" && pathname.includes("/instructor/")) {
-    window.location.replace("/student/simulasi");
-    return "peserta";
-  }
-  
-  if (storedRole === "instruktur" && pathname.includes("/student/")) {
-    window.location.replace("/instructor/simulasi");
-    return "instruktur";
-  }
-  
-  // PRIORITASKAN localStorage role, bukan URL
-  return storedRole;
-};
+  const getCurrentRole = () => {
+    const storedRole = localStorage.getItem("role");
+    const pathname = window.location.pathname;
+
+    // IMMEDIATE redirect jika role mismatch
+    if (storedRole === "peserta" && pathname.includes("/instructor/")) {
+      window.location.replace("/student/simulasi");
+      return "peserta";
+    }
+
+    if (storedRole === "instruktur" && pathname.includes("/student/")) {
+      window.location.replace("/instructor/simulasi");
+      return "instruktur";
+    }
+
+    // PRIORITASKAN localStorage role, bukan URL
+    return storedRole;
+  };
 
   const currentRole = getCurrentRole();
   console.log("Role from localStorage:", localStorage.getItem("role"));
   console.log("Role from URL detection:", currentRole);
 
-  
   const getBasePath = () => {
     if (currentRole === "instruktur") {
       return "/instructor";
@@ -133,7 +133,6 @@ const getCurrentRole = () => {
 
       // Show success message briefly
       setError("");
-      alert(res.data.message);
     } catch (error) {
       console.error("Error toggling activation:", error);
 
@@ -232,30 +231,41 @@ const getCurrentRole = () => {
     return { valid: true };
   };
 
-  const validateGroupSize = (childrenCount, currentOrder) => {
-    const { standards } = getTOEFLStandard();
-    const currentModulCount = getModulSoalCount(modul);
-    const maxForModule = standards[modul];
-    const available = maxForModule - currentModulCount;
+  const validateGroupSize = (childrenCount, currentOrder, isEditing = false) => {
+  const { standards } = getTOEFLStandard();
+  let currentModulCount = getModulSoalCount(modul);
+  const maxForModule = standards[modul];
 
-    console.log("Group validation:", {
-      modul,
-      childrenCount,
-      currentModulCount,
-      maxForModule,
-      available,
-      wouldExceed: childrenCount > available,
-    });
+  // FIXED: Jika sedang edit grup, kurangi jumlah subsoal grup yang lama
+  if (isEditing && editingId) {
+    const existingChildren = getGroupChildren(editingId);
+    currentModulCount -= existingChildren.length;
+    console.log("EDIT MODE: Mengurangi subsoal grup lama:", existingChildren.length);
+  }
 
-    if (childrenCount > available) {
-      return {
-        valid: false,
-        error: `Grup dengan ${childrenCount} soal melebihi batas modul ${modul} (${maxForModule} soal). Saat ini ada ${currentModulCount} soal, tersisa ${available} slot.`,
-      };
-    }
+  const available = maxForModule - currentModulCount;
+  const wouldExceed = childrenCount > available;
 
-    return { valid: true };
-  };
+  console.log("Group validation (FIXED):", {
+    modul,
+    childrenCount,
+    currentModulCount: currentModulCount,
+    maxForModule,
+    available,
+    wouldExceed,
+    isEditing,
+    editingId
+  });
+
+  if (wouldExceed) {
+    return {
+      valid: false,
+      error: `Grup dengan ${childrenCount} soal melebihi batas modul ${modul} (${maxForModule} soal). Saat ini ada ${currentModulCount} soal, tersisa ${available} slot.`,
+    };
+  }
+
+  return { valid: true };
+};
 
   const getModulSoalCount = (targetModul) => {
     const realQuestions = questions.filter(
@@ -499,8 +509,6 @@ const getCurrentRole = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Apakah Anda yakin ingin menghapus soal ini?")) return;
-
     setLoading(true);
     setError("");
     try {
@@ -579,40 +587,27 @@ const getCurrentRole = () => {
   };
 
   const validateGroupForm = () => {
-    const errors = [];
+  const errors = [];
 
-    if (!form.children || form.children.length === 0) {
-      errors.push("Minimal harus ada 1 subsoal dalam grup");
-      return errors;
-    }
+  if (!form.children || form.children.length === 0) {
+    errors.push("Minimal harus ada 1 subsoal dalam grup");
+    return errors;
+  }
 
-    if (!form.group_order_number) {
-      errors.push("Order number grup wajib diisi");
-    }
+  if (!form.group_order_number) {
+    errors.push("Order number grup wajib diisi");
+  }
 
-    const groupValidation = validateGroupSize(
-      form.children.length,
-      form.group_order_number
-    );
-    if (!groupValidation.valid) {
-      errors.push(groupValidation.error);
-    }
-
-    form.children.forEach((child, index) => {
-      if (!child.question_text?.trim())
-        errors.push(`Subsoal ${index + 1}: Pertanyaan wajib diisi`);
-      if (!child.option_a?.trim())
-        errors.push(`Subsoal ${index + 1}: Option A wajib diisi`);
-      if (!child.option_b?.trim())
-        errors.push(`Subsoal ${index + 1}: Option B wajib diisi`);
-      if (!child.option_c?.trim())
-        errors.push(`Subsoal ${index + 1}: Option C wajib diisi`);
-      if (!child.option_d?.trim())
-        errors.push(`Subsoal ${index + 1}: Option D wajib diisi`);
-      if (!child.correct_option)
-        errors.push(`Subsoal ${index + 1}: Jawaban benar wajib dipilih`);
-    });
-
+  // FIXED: Pass isEditing flag
+  const isEditMode = formMode === "edit-group";
+  const groupValidation = validateGroupSize(
+    form.children.length,
+    form.group_order_number,
+    isEditMode
+  );
+  if (!groupValidation.valid) {
+    errors.push(groupValidation.error);
+  }
     return errors;
   };
 
@@ -1484,22 +1479,31 @@ const getCurrentRole = () => {
                             >
                               Edit
                             </button>
-                            <button
-                              onClick={() => handleDelete(item.id)}
-                              disabled={loading}
-                              style={{
-                                backgroundColor: loading
-                                  ? "#6c757d"
-                                  : "#dc3545",
-                                color: "white",
-                                border: "none",
-                                padding: "0.5rem 1rem",
-                                borderRadius: "4px",
-                                cursor: loading ? "not-allowed" : "pointer",
+                            <Confirm
+                              title="HAPUS SOAL?"
+                              description="Apakah Anda yakin ingin menghapus soal ini? Tindakan ini tidak dapat dibatalkan."
+                              confirmText="HAPUS"
+                              confirmButtonType="danger"
+                              onConfirm={async () => {
+                                await handleDelete(item.id);
                               }}
                             >
-                              Hapus
-                            </button>
+                              <button
+                                disabled={loading}
+                                style={{
+                                  backgroundColor: loading
+                                    ? "#6c757d"
+                                    : "#dc3545",
+                                  color: "white",
+                                  border: "none",
+                                  padding: "0.5rem 1rem",
+                                  borderRadius: "4px",
+                                  cursor: loading ? "not-allowed" : "pointer",
+                                }}
+                              >
+                                Hapus
+                              </button>
+                            </Confirm>
                           </>
                         )}
                       </div>
@@ -1669,22 +1673,31 @@ const getCurrentRole = () => {
                               >
                                 Edit Grup
                               </button>
-                              <button
-                                onClick={() => handleDelete(item.id)}
-                                disabled={loading}
-                                style={{
-                                  backgroundColor: loading
-                                    ? "#6c757d"
-                                    : "#dc3545",
-                                  color: "white",
-                                  border: "none",
-                                  padding: "0.5rem 1rem",
-                                  borderRadius: "4px",
-                                  cursor: loading ? "not-allowed" : "pointer",
+                              <Confirm
+                                title="HAPUS GRUP SOAL?"
+                                description="Apakah Anda yakin ingin menghapus grup soal ini beserta semua subsoalnya? Tindakan ini tidak dapat dibatalkan."
+                                confirmText="HAPUS"
+                                confirmButtonType="danger"
+                                onConfirm={async () => {
+                                  await handleDelete(item.id);
                                 }}
                               >
-                                Hapus Grup
-                              </button>
+                                <button
+                                  disabled={loading}
+                                  style={{
+                                    backgroundColor: loading
+                                      ? "#6c757d"
+                                      : "#dc3545",
+                                    color: "white",
+                                    border: "none",
+                                    padding: "0.5rem 1rem",
+                                    borderRadius: "4px",
+                                    cursor: loading ? "not-allowed" : "pointer",
+                                  }}
+                                >
+                                  Hapus Grup
+                                </button>
+                              </Confirm>
                             </>
                           )}
                         </div>

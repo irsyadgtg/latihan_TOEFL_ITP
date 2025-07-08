@@ -461,22 +461,7 @@ export default function Simulasi() {
             Kelola Soal Simulasi
           </button>
 
-          <button
-            onClick={handleViewResults}
-            style={{
-              backgroundColor: "#6c757d",
-              color: "white",
-              border: "none",
-              padding: "1rem 2rem",
-              fontSize: "16px",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontWeight: "bold",
-              fontFamily: "Poppins, sans-serif",
-            }}
-          >
-            Lihat Hasil Peserta
-          </button>
+          
         </div>
       )}
 
